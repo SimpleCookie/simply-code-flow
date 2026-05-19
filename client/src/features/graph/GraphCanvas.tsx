@@ -19,13 +19,14 @@ import '@xyflow/react/dist/style.css'
 import { nanoid } from 'nanoid'
 import { CustomNode } from './CustomNode.tsx'
 import { CustomEdge } from './CustomEdge.tsx'
+import { BranchNode } from './BranchNode.tsx'
 import { useFlowStore } from '../../store/flowStore.ts'
 import { useUIStore } from '../../store/uiStore.ts'
 import { KIND_COLORS } from '@scf/shared'
 import type { CustomNodeData } from './CustomNode.tsx'
 
 // Defined outside component to avoid React Flow re-registration warnings
-const nodeTypes: NodeTypes = { codeNode: CustomNode }
+const nodeTypes: NodeTypes = { codeNode: CustomNode, branch: BranchNode }
 const edgeTypes: EdgeTypes = { codeEdge: CustomEdge }
 
 export function GraphCanvas() {

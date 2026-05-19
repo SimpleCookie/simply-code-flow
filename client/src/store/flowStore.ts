@@ -33,6 +33,7 @@ interface FlowStore {
   updateEdge: (id: string, patch: Partial<FlowEdge>) => void
   deleteEdge: (id: string) => void
   reconnectEdge: (edgeId: string, newSource: string, newTarget: string) => void
+  setEdgeSourceHandle: (edgeId: string, handle: string | undefined) => void
   swapEdgeDirection: (edgeId: string) => void
   /** Additive: creates stub nodes + edges for calleeNames not yet in graph. No history push. */
   expandNodeCallees: (nodeId: string, calleeNames: string[]) => void
@@ -40,6 +41,10 @@ interface FlowStore {
   commitOverlay: (nodeId: string, patch: Partial<FlowNode>, calleeNames: string[]) => void
   /** One atomic commit for SnippetModal: pushes history, adds node, optional parent edge, expands callees. */
   commitSnippet: (node: FlowNode, parentId: string | null, calleeNames: string[]) => void
+  /** Atomic commit for multi-function paste: one history entry, all nodes + internal edges + stubs. */
+  commitMultiSnippet: (nodes: FlowNode[], internalEdges: FlowEdge[], parentId: string | null) => void
+  /** Create a branch node downstream of parentNodeId with true/false callee stubs. */
+  addBranchNode: (opts: { parentNodeId: string; condition: string; thenCallees: string[]; elseCallees: string[]; position?: { x: number; y: number } }) => string
   updateFlowMeta: (patch: Partial<Pick<Flow, 'name' | 'description' | 'tags'>>) => void
   save: () => Promise<void>
   scheduleSave: () => void
@@ -72,6 +77,8 @@ function toRfEdge(e: FlowEdge): Edge {
     id: e.id,
     source: e.source,
     target: e.target,
+    sourceHandle: e.sourceHandle,
+    targetHandle: e.targetHandle,
     type: 'codeEdge',
     label: e.label,
     data: {
@@ -114,6 +121,8 @@ function fromRfEdge(e: Edge): FlowEdge {
     condition: d.condition as string | undefined,
     confidence: (d.confidence as FlowEdge['confidence']) ?? 'suspected',
     notes: d.notes as string | undefined,
+    sourceHandle: e.sourceHandle ?? undefined,
+    targetHandle: e.targetHandle ?? undefined,
   }
 }
 
@@ -251,6 +260,15 @@ export const useFlowStore = create<FlowStore>((set, get) => ({
     get().scheduleSave()
   },
 
+  setEdgeSourceHandle(edgeId, handle) {
+    set((s) => ({
+      edges: s.edges.map((e) =>
+        e.id === edgeId ? { ...e, sourceHandle: handle } : e,
+      ),
+    }))
+    get().scheduleSave()
+  },
+
   swapEdgeDirection(edgeId) {
     get().pushHistory()
     set((s) => ({
@@ -354,6 +372,82 @@ export const useFlowStore = create<FlowStore>((set, get) => ({
     }
     get().expandNodeCallees(node.id, calleeNames)
     get().scheduleSave()
+  },
+
+  commitMultiSnippet(newNodes, internalEdges, parentId) {
+    get().pushHistory()
+    // Add all nodes
+    set((s) => ({ nodes: [...s.nodes, ...newNodes.map(toRfNode)] }))
+    // Add internal edges (dedup)
+    const { edges: existingEdges } = get()
+    const rfInternal = internalEdges
+      .filter((e) => !existingEdges.some((x) => x.source === e.source && x.target === e.target))
+      .map(toRfEdge)
+    if (rfInternal.length) set((s) => ({ edges: [...s.edges, ...rfInternal] }))
+    // Parent → first node
+    if (parentId && newNodes.length > 0) {
+      const firstId = newNodes[0].id
+      const isDup = get().edges.some((e) => e.source === parentId && e.target === firstId)
+      if (!isDup) {
+        set((s) => ({
+          edges: [...s.edges, toRfEdge({ id: nanoid(), source: parentId, target: firstId, kind: 'calls', confidence: 'suspected' })],
+        }))
+      }
+    }
+    get().scheduleSave()
+  },
+
+  addBranchNode({ parentNodeId, condition, thenCallees, elseCallees, position }) {
+    const parentNode = get().nodes.find((n) => n.id === parentNodeId)
+    const pos = position ?? {
+      x: (parentNode?.position.x ?? 0) + 280,
+      y: (parentNode?.position.y ?? 0),
+    }
+    const branchId = nanoid()
+    get().pushHistory()
+
+    // Create branch node
+    const branchFlowNode: FlowNode = {
+      id: branchId,
+      label: condition,
+      kind: 'branch',
+      code: '',
+      tags: [],
+      status: 'confirmed',
+      position: pos,
+    }
+    set((s) => ({ nodes: [...s.nodes, { id: branchId, type: 'branch', position: pos, data: { label: condition, kind: 'branch' } }] }))
+
+    // Edge parent → branch
+    set((s) => ({
+      edges: [...s.edges, toRfEdge({ id: nanoid(), source: parentNodeId, target: branchId, kind: 'branches', confidence: 'confirmed' })],
+    }))
+
+    // True-branch stubs
+    thenCallees.forEach((name, i) => {
+      const existing = get().nodes.find((n) => (n.data as { label?: string }).label === name)
+      const targetId = existing?.id ?? nanoid()
+      if (!existing) {
+        const stubNode: FlowNode = { id: targetId, label: name, kind: 'stub', code: '', tags: [], status: 'todo', position: { x: pos.x + 220, y: pos.y - (thenCallees.length - 1) * 60 + i * 120 } }
+        set((s) => ({ nodes: [...s.nodes, toRfNode(stubNode)] }))
+      }
+      set((s) => ({ edges: [...s.edges, toRfEdge({ id: nanoid(), source: branchId, target: targetId, kind: 'calls', confidence: 'suspected', sourceHandle: 'true' })] }))
+    })
+
+    // False-branch stubs
+    elseCallees.forEach((name, i) => {
+      const existing = get().nodes.find((n) => (n.data as { label?: string }).label === name)
+      const targetId = existing?.id ?? nanoid()
+      if (!existing) {
+        const stubNode: FlowNode = { id: targetId, label: name, kind: 'stub', code: '', tags: [], status: 'todo', position: { x: pos.x + 220, y: pos.y + 80 + i * 120 } }
+        set((s) => ({ nodes: [...s.nodes, toRfNode(stubNode)] }))
+      }
+      set((s) => ({ edges: [...s.edges, toRfEdge({ id: nanoid(), source: branchId, target: targetId, kind: 'calls', confidence: 'suspected', sourceHandle: 'false' })] }))
+    })
+
+    get().scheduleSave()
+    void branchFlowNode // used indirectly via toRfNode above — keeps lint happy
+    return branchId
   },
 
   updateFlowMeta(patch) {

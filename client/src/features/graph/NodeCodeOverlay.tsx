@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import Editor from '@monaco-editor/react'
-import { X, Zap, AlertTriangle } from 'lucide-react'
+import { X, Zap, AlertTriangle, GitBranch } from 'lucide-react'
 import { useFlowStore } from '../../store/flowStore.ts'
 import { useUIStore } from '../../store/uiStore.ts'
 import { detectCode, SUPPORTED_LANGUAGES } from '../../lib/detect/index.ts'
@@ -32,9 +32,12 @@ const labelStyle: React.CSSProperties = {
 export function NodeCodeOverlay() {
   const nodeId = useUIStore((s) => s.codeOverlayNodeId)
   const closeOverlay = useUIStore((s) => s.closeCodeOverlay)
+  const lastLanguage = useUIStore((s) => s.lastLanguage)
+  const setLastLanguage = useUIStore((s) => s.setLastLanguage)
 
   const nodes = useFlowStore((s) => s.nodes)
   const commitOverlay = useFlowStore((s) => s.commitOverlay)
+  const addBranchNode = useFlowStore((s) => s.addBranchNode)
 
   const node = nodeId ? nodes.find((n) => n.id === nodeId) : null
   const nodeData = node ? (node.data as CustomNodeData) : null
@@ -52,6 +55,7 @@ export function NodeCodeOverlay() {
   const [status, setStatus] = useState<NodeStatus>('confirmed')
   const [detection, setDetection] = useState(detectCode(''))
   const [selectedCallees, setSelectedCallees] = useState<Set<string>>(new Set())
+  const [selectedBranches, setSelectedBranches] = useState<Set<number>>(new Set())
 
   // Seed form from node when overlay opens
   useEffect(() => {
@@ -59,7 +63,7 @@ export function NodeCodeOverlay() {
     setCode(nodeData.code ?? '')
     setLabel(nodeData.label ?? '')
     setKind(nodeData.kind ?? 'function')
-    setLanguage(nodeData.language ?? 'typescript')
+    setLanguage(nodeData.language ?? lastLanguage)
     setFilePath(nodeData.filePath ?? '')
     setLineStart(nodeData.lineRange ? String(nodeData.lineRange[0]) : '')
     setLineEnd(nodeData.lineRange ? String(nodeData.lineRange[1]) : '')
@@ -69,6 +73,7 @@ export function NodeCodeOverlay() {
     const det = detectCode(nodeData.code ?? '')
     setDetection(det)
     setSelectedCallees(new Set())
+    setSelectedBranches(new Set())
   }, [nodeId]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const runDetection = useCallback(
@@ -100,6 +105,14 @@ export function NodeCodeOverlay() {
     })
   }
 
+  const toggleBranch = (idx: number) => {
+    setSelectedBranches((prev) => {
+      const next = new Set(prev)
+      next.has(idx) ? next.delete(idx) : next.add(idx)
+      return next
+    })
+  }
+
   const handleSave = useCallback(() => {
     if (!nodeId) return
     commitOverlay(
@@ -120,8 +133,20 @@ export function NodeCodeOverlay() {
       },
       Array.from(selectedCallees),
     )
+    selectedBranches.forEach((idx) => {
+      const b = detection.detectedBranches[idx]
+      if (b && nodeId) {
+        addBranchNode({
+          parentNodeId: nodeId,
+          condition: b.condition,
+          thenCallees: b.thenCallees,
+          elseCallees: b.elseCallees,
+        })
+      }
+    })
+    setLastLanguage(language)
     closeOverlay()
-  }, [nodeId, code, label, nodeData, kind, language, filePath, lineStart, lineEnd, notes, tags, status, detection, selectedCallees, commitOverlay, closeOverlay])
+  }, [nodeId, code, label, nodeData, kind, language, filePath, lineStart, lineEnd, notes, tags, status, detection, selectedCallees, selectedBranches, commitOverlay, addBranchNode, setLastLanguage, closeOverlay])
 
   // Ctrl+Enter to save, Escape to close
   useEffect(() => {
@@ -281,7 +306,7 @@ export function NodeCodeOverlay() {
             {/* Language */}
             <div>
               <label style={labelStyle}>Language</label>
-              <select style={inputStyle} value={language} onChange={(e) => setLanguage(e.target.value)}>
+              <select style={inputStyle} value={language} onChange={(e) => { setLanguage(e.target.value); setLastLanguage(e.target.value) }}>
                 {SUPPORTED_LANGUAGES.map((l) => <option key={l} value={l}>{l}</option>)}
               </select>
             </div>
@@ -348,6 +373,34 @@ export function NodeCodeOverlay() {
                         style={{ accentColor: KIND_COLORS.stub }}
                       />
                       <code style={{ fontFamily: 'ui-monospace, monospace' }}>{name}()</code>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Detected branch nodes */}
+            {detection.detectedBranches.length > 0 && (
+              <div>
+                <label style={{ ...labelStyle, display: 'flex', alignItems: 'center', gap: '5px' }}>
+                  <GitBranch size={11} /> Branch nodes
+                </label>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', maxHeight: '130px', overflow: 'auto' }}>
+                  {detection.detectedBranches.map((b, i) => (
+                    <label key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: '7px', cursor: 'pointer', fontSize: '12px', color: 'var(--color-text)' }}>
+                      <input
+                        type="checkbox"
+                        checked={selectedBranches.has(i)}
+                        onChange={() => toggleBranch(i)}
+                        style={{ marginTop: '2px', accentColor: '#f59e0b' }}
+                      />
+                      <span>
+                        <code style={{ fontFamily: 'ui-monospace, monospace', color: '#f59e0b' }}>{b.condition}</code>
+                        <span style={{ marginLeft: '5px', color: 'var(--color-text-muted)', fontSize: '11px' }}>
+                          {b.thenCallees.length > 0 && `T: ${b.thenCallees.slice(0, 2).join(', ')}`}
+                          {b.hasElse && b.elseCallees.length > 0 && ` F: ${b.elseCallees.slice(0, 2).join(', ')}`}
+                        </span>
+                      </span>
                     </label>
                   ))}
                 </div>

@@ -44,6 +44,7 @@ export function InspectorPanel() {
   const deleteEdge = useFlowStore((s) => s.deleteEdge)
   const addEdge = useFlowStore((s) => s.addEdge)
   const reconnectEdge = useFlowStore((s) => s.reconnectEdge)
+  const setEdgeSourceHandle = useFlowStore((s) => s.setEdgeSourceHandle)
   const swapEdgeDirection = useFlowStore((s) => s.swapEdgeDirection)
 
   const [codeExpanded, setCodeExpanded] = useState(false)
@@ -317,6 +318,8 @@ export function InspectorPanel() {
   // ——— EDGE INSPECTOR ———
   if (edgeData && edge) {
     const color = EDGE_KIND_COLORS[edgeData.kind] ?? '#475569'
+    const sourceNode = nodes.find((n) => n.id === edge.source)
+    const isSourceBranch = (sourceNode?.data as CustomNodeData | undefined)?.kind === 'branch'
 
     return (
       <div style={panelStyle}>
@@ -372,6 +375,20 @@ export function InspectorPanel() {
               </div>
             </div>
           </div>
+          {isSourceBranch && (
+            <div style={sectionStyle}>
+              <label style={labelStyle}>Branch Handle</label>
+              <select
+                style={inputStyle}
+                value={edge.sourceHandle ?? ''}
+                onChange={(e) => setEdgeSourceHandle(edge.id, e.target.value || undefined)}
+              >
+                <option value="">— none —</option>
+                <option value="true">✅ TRUE</option>
+                <option value="false">❌ FALSE</option>
+              </select>
+            </div>
+          )}
           <div style={{ ...sectionStyle, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
             <div>
               <label style={labelStyle}>Kind</label>

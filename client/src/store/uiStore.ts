@@ -8,6 +8,8 @@ interface UIStore {
   snippetModalOpen: boolean
   snippetModalParentId: string | null
   codeOverlayNodeId: string | null
+  /** Last language the user manually selected in any editor — seeded into new nodes. */
+  lastLanguage: string
 
   selectNode: (id: string | null) => void
   selectEdge: (id: string | null) => void
@@ -18,6 +20,7 @@ interface UIStore {
   closeSnippetModal: () => void
   openCodeOverlay: (nodeId: string) => void
   closeCodeOverlay: () => void
+  setLastLanguage: (lang: string) => void
 }
 
 export const useUIStore = create<UIStore>((set) => ({
@@ -28,6 +31,7 @@ export const useUIStore = create<UIStore>((set) => ({
   snippetModalOpen: false,
   snippetModalParentId: null,
   codeOverlayNodeId: null,
+  lastLanguage: 'typescript',
 
   selectNode: (id) => set({ selectedNodeId: id, selectedEdgeId: null, inspectorOpen: id !== null }),
   selectEdge: (id) => set({ selectedEdgeId: id, selectedNodeId: null, inspectorOpen: id !== null }),
@@ -39,4 +43,5 @@ export const useUIStore = create<UIStore>((set) => ({
   closeSnippetModal: () => set({ snippetModalOpen: false, snippetModalParentId: null }),
   openCodeOverlay: (nodeId) => set({ codeOverlayNodeId: nodeId }),
   closeCodeOverlay: () => set({ codeOverlayNodeId: null }),
+  setLastLanguage: (lang) => set({ lastLanguage: lang }),
 }))

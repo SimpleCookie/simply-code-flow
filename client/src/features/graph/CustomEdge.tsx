@@ -1,6 +1,6 @@
 import { memo } from 'react'
 import { BaseEdge, EdgeLabelRenderer, getBezierPath, type EdgeProps } from '@xyflow/react'
-import { EDGE_KIND_COLORS } from '@scf/shared'
+import { EDGE_KIND_COLORS, BRANCH_HANDLE_COLORS } from '@scf/shared'
 import type { EdgeKind } from '@scf/shared'
 
 export interface CustomEdgeData extends Record<string, unknown> {
@@ -22,10 +22,19 @@ export const CustomEdge = memo(function CustomEdge({
   data,
   selected,
   markerEnd,
+  sourceHandleId,
 }: EdgeProps) {
   const d = (data ?? {}) as CustomEdgeData
-  const color = EDGE_KIND_COLORS[d.kind ?? 'unknown'] ?? '#475569'
-  const displayLabel = d.condition ?? d.label ?? d.kind ?? 'unknown'
+
+  // Handle-specific override: true=green, false=red
+  let color = EDGE_KIND_COLORS[d.kind ?? 'unknown'] ?? '#475569'
+  let handleBadge: string | null = null
+  if (sourceHandleId === 'true') { color = BRANCH_HANDLE_COLORS.true; handleBadge = 'T' }
+  else if (sourceHandleId === 'false') { color = BRANCH_HANDLE_COLORS.false; handleBadge = 'F' }
+  else if (sourceHandleId === 'body') { color = BRANCH_HANDLE_COLORS.body; handleBadge = '↻' }
+  else if (sourceHandleId === 'complete') { color = BRANCH_HANDLE_COLORS.complete; handleBadge = '✓' }
+
+  const displayLabel = handleBadge ?? d.condition ?? d.label ?? d.kind ?? 'unknown'
 
   const [edgePath, labelX, labelY] = getBezierPath({
     sourceX, sourceY, sourcePosition,
@@ -58,7 +67,7 @@ export const CustomEdge = memo(function CustomEdge({
               borderRadius: '4px',
               fontSize: '10px',
               padding: '1px 6px',
-              fontWeight: 500,
+              fontWeight: handleBadge ? 700 : 500,
               maxWidth: '120px',
               overflow: 'hidden',
               textOverflow: 'ellipsis',

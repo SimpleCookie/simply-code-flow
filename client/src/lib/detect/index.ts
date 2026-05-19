@@ -1,12 +1,21 @@
 import hljs from 'highlight.js'
 import type { NodeKind } from '@scf/shared'
 
+export interface DetectedBranch {
+  condition: string
+  lineRange: [number, number]
+  hasElse: boolean
+  thenCallees: string[]
+  elseCallees: string[]
+}
+
 export interface DetectionResult {
   language: string
   confidence: number
   suggestedLabel: string
   suggestedKind: NodeKind
   detectedCallees: string[]
+  detectedBranches: DetectedBranch[]
   isAsync: boolean
   hasSQL: boolean
   hasHTTP: boolean
@@ -90,6 +99,53 @@ function extractCallees(code: string): string[] {
   return Array.from(found).slice(0, 25)
 }
 
+/** Bracket-match from openIdx to find the closing brace. */
+function findClose(code: string, openIdx: number): number {
+  let depth = 0
+  for (let i = openIdx; i < code.length; i++) {
+    if (code[i] === '{') depth++
+    else if (code[i] === '}') { depth--; if (depth === 0) return i }
+  }
+  return code.length - 1
+}
+
+function detectBranches(code: string): DetectedBranch[] {
+  const results: DetectedBranch[] = []
+  // Match: if (condition) { — single-line conditions only (covers most real code)
+  const re = /\bif\s*\(([^)]+)\)\s*\{/g
+  let m: RegExpExecArray | null
+  while ((m = re.exec(code)) !== null) {
+    const condition = m[1].trim()
+    const thenOpen = code.indexOf('{', m.index)
+    if (thenOpen === -1) continue
+    const thenClose = findClose(code, thenOpen)
+    const thenBody = code.slice(thenOpen + 1, thenClose)
+    const startLine = code.slice(0, m.index).split('\n').length
+    let endLine = code.slice(0, thenClose).split('\n').length
+    let hasElse = false
+    let elseBody = ''
+    // Check for else / else if immediately after
+    const afterThen = code.slice(thenClose + 1).trimStart()
+    if (afterThen.startsWith('else')) {
+      hasElse = true
+      const elseOpen = code.indexOf('{', thenClose + 1)
+      if (elseOpen !== -1) {
+        const elseClose = findClose(code, elseOpen)
+        elseBody = code.slice(elseOpen + 1, elseClose)
+        endLine = code.slice(0, elseClose).split('\n').length
+      }
+    }
+    results.push({
+      condition,
+      lineRange: [startLine, endLine],
+      hasElse,
+      thenCallees: extractCallees(thenBody),
+      elseCallees: extractCallees(elseBody),
+    })
+  }
+  return results.slice(0, 10) // cap
+}
+
 function parseHeaderComment(code: string): { filePath?: string; lineRange?: [number, number] } {
   // Match: // path/to/file.ts:10-50  or  # path/to/file.py:10-50
   const m = code.match(/^(?:\/\/|#)\s*([\w/\\.\-:]+):(\d+)(?:-(\d+))?/m)
@@ -109,6 +165,7 @@ export function detectCode(code: string): DetectionResult {
       suggestedLabel: '',
       suggestedKind: 'unknown',
       detectedCallees: [],
+      detectedBranches: [],
       isAsync: false,
       hasSQL: false,
       hasHTTP: false,
@@ -134,6 +191,7 @@ export function detectCode(code: string): DetectionResult {
     suggestedLabel: extractName(trimmed),
     suggestedKind: detectKind(trimmed),
     detectedCallees: extractCallees(trimmed),
+    detectedBranches: detectBranches(trimmed),
     isAsync: /\basync\b|\bawait\b/.test(trimmed),
     hasSQL: /\b(SELECT|INSERT|UPDATE|DELETE)\b/i.test(trimmed),
     hasHTTP: /\b(fetch|axios|http\.|HttpClient|WebClient|requests\.)\b/.test(trimmed),

@@ -10,6 +10,8 @@ export type NodeKind =
   | 'job'
   | 'config'
   | 'stub'
+  | 'branch'
+  | 'loop'
   | 'unknown'
 
 export type EdgeKind =
@@ -53,6 +55,8 @@ export interface FlowEdge {
   condition?: string
   confidence: EdgeConfidence
   notes?: string
+  sourceHandle?: string
+  targetHandle?: string
 }
 
 export interface Flow {
@@ -79,7 +83,8 @@ export interface FlowSummary {
 
 export const NODE_KINDS: NodeKind[] = [
   'function', 'method', 'class', 'endpoint', 'sql',
-  'event', 'external-api', 'ui', 'job', 'config', 'stub', 'unknown',
+  'event', 'external-api', 'ui', 'job', 'config', 'stub',
+  'branch', 'loop', 'unknown',
 ]
 
 export const EDGE_KINDS: EdgeKind[] = [
@@ -99,7 +104,16 @@ export const KIND_COLORS: Record<NodeKind, string> = {
   job: '#f97316',
   config: '#94a3b8',
   stub: '#475569',
+  branch: '#f59e0b',
+  loop: '#06b6d4',
   unknown: '#475569',
+}
+
+export const BRANCH_HANDLE_COLORS = {
+  true: '#22c55e',
+  false: '#ef4444',
+  body: '#06b6d4',
+  complete: '#a855f7',
 }
 
 export const EDGE_KIND_COLORS: Record<EdgeKind, string> = {

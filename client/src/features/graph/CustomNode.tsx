@@ -36,6 +36,8 @@ const KIND_LABELS: Record<NodeKind, string> = {
   config: 'config',
   stub: 'stub',
   unknown: '?',
+  branch: 'branch',
+  loop: 'loop',
 }
 
 export const CustomNode = memo(function CustomNode({ data, selected }: NodeProps) {
