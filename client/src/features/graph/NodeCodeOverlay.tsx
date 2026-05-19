@@ -1,9 +1,11 @@
 import { useState, useEffect, useCallback } from 'react'
 import Editor from '@monaco-editor/react'
-import { X, Zap, AlertTriangle, GitBranch } from 'lucide-react'
+import { X, Zap, AlertTriangle, GitBranch, Code2, GitMerge } from 'lucide-react'
 import { useFlowStore } from '../../store/flowStore.ts'
 import { useUIStore } from '../../store/uiStore.ts'
 import { detectCode, SUPPORTED_LANGUAGES } from '../../lib/detect/index.ts'
+import { computeComplexity } from '../../lib/cfg/index.ts'
+import { CfgCanvas } from '../cfg/CfgCanvas.tsx'
 import { NODE_KINDS, KIND_COLORS } from '@scf/shared'
 import type { NodeKind, NodeStatus } from '@scf/shared'
 import type { CustomNodeData } from './CustomNode.tsx'
@@ -56,6 +58,7 @@ export function NodeCodeOverlay() {
   const [detection, setDetection] = useState(detectCode(''))
   const [selectedCallees, setSelectedCallees] = useState<Set<string>>(new Set())
   const [selectedBranches, setSelectedBranches] = useState<Set<number>>(new Set())
+  const [activeTab, setActiveTab] = useState<'code' | 'flow'>('code')
 
   // Seed form from node when overlay opens
   useEffect(() => {
@@ -166,6 +169,7 @@ export function NodeCodeOverlay() {
   if (!nodeId || !nodeData) return null
 
   const kindColor = KIND_COLORS[kind] ?? '#475569'
+  const complexity = code.trim() ? computeComplexity(code) : 1
 
   return (
     <div
@@ -229,6 +233,34 @@ export function NodeCodeOverlay() {
           )}
           {detection.isAsync && <Zap size={14} color="#f59e0b" />}
           <div style={{ flex: 1 }} />
+          {/* ── Tab bar ── */}
+          <div style={{ display: 'flex', background: 'var(--color-bg-primary)', border: '1px solid var(--color-border)', borderRadius: '6px', padding: '2px', gap: '2px' }}>
+            {(['code', 'flow'] as const).map((tab) => (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab)}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: '5px',
+                  padding: '4px 12px', borderRadius: '4px', border: 'none',
+                  cursor: 'pointer', fontSize: '12px', fontWeight: 600,
+                  background: activeTab === tab ? 'var(--color-bg-secondary)' : 'transparent',
+                  color: activeTab === tab ? 'var(--color-text)' : 'var(--color-text-muted)',
+                  boxShadow: activeTab === tab ? '0 1px 3px rgba(0,0,0,0.3)' : 'none',
+                  transition: 'all 0.1s',
+                }}
+              >
+                {tab === 'code' ? <Code2 size={12} /> : <GitMerge size={12} />}
+                {tab === 'code' ? 'Code' : 'Flow'}
+                {tab === 'flow' && complexity > 1 && (
+                  <span style={{
+                    background: complexity > 10 ? '#ef4444' : complexity > 5 ? '#f59e0b' : '#22c55e',
+                    color: '#fff', borderRadius: '10px', fontSize: '9px',
+                    padding: '0 5px', fontWeight: 700, minWidth: '16px', textAlign: 'center',
+                  }}>{complexity}</span>
+                )}
+              </button>
+            ))}
+          </div>
           <span style={{ fontSize: '11px', color: 'var(--color-text-muted)' }}>Ctrl+Enter to save</span>
           <button
             onClick={closeOverlay}
@@ -241,25 +273,44 @@ export function NodeCodeOverlay() {
 
         {/* ── Body ── */}
         <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
-          {/* Left: Monaco */}
-          <div style={{ flex: 1, overflow: 'hidden' }}>
-            <Editor
-              height="100%"
+          {/* Left: Monaco or CFG */}
+          {activeTab === 'code' ? (
+            <div style={{ flex: 1, overflow: 'hidden' }}>
+              <Editor
+                height="100%"
+                language={language}
+                value={code}
+                onChange={handleCodeChange}
+                theme="vs-dark"
+                options={{
+                  fontSize: 14,
+                  minimap: { enabled: true },
+                  scrollBeyondLastLine: false,
+                  wordWrap: 'off',
+                  lineNumbers: 'on',
+                  padding: { top: 16 },
+                  renderLineHighlight: 'all',
+                }}
+              />
+            </div>
+          ) : (
+            <CfgCanvas
+              code={code}
               language={language}
-              value={code}
-              onChange={handleCodeChange}
-              theme="vs-dark"
-              options={{
-                fontSize: 14,
-                minimap: { enabled: true },
-                scrollBeyondLastLine: false,
-                wordWrap: 'off',
-                lineNumbers: 'on',
-                padding: { top: 16 },
-                renderLineHighlight: 'all',
+              nodeLabel={nodeData.label || 'untitled'}
+              onJumpTo={(callee) => {
+                // Find a node in the graph matching the callee name and open its overlay
+                const target = nodes.find((n) => {
+                  const d = n.data as CustomNodeData
+                  return d.label === callee || d.label?.toLowerCase() === callee.toLowerCase()
+                })
+                if (target) {
+                  closeOverlay()
+                  setTimeout(() => useUIStore.getState().openCodeOverlay(target.id), 50)
+                }
               }}
             />
-          </div>
+          )}
 
           {/* Right: metadata */}
           <div

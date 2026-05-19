@@ -3,6 +3,7 @@ import { Handle, Position, type NodeProps } from '@xyflow/react'
 import { KIND_COLORS } from '@scf/shared'
 import type { NodeKind, NodeStatus } from '@scf/shared'
 import { Zap, AlertCircle, CheckCircle, Clock } from 'lucide-react'
+import { computeComplexity } from '../../lib/cfg/index.ts'
 
 export interface CustomNodeData extends Record<string, unknown> {
   label: string
@@ -44,6 +45,7 @@ export const CustomNode = memo(function CustomNode({ data, selected }: NodeProps
   const d = data as CustomNodeData
   const color = KIND_COLORS[d.kind] ?? '#475569'
   const isStub = d.kind === 'stub' || !d.code
+  const complexity = d.code && !isStub ? computeComplexity(d.code) : 0
 
   return (
     <div
@@ -83,8 +85,21 @@ export const CustomNode = memo(function CustomNode({ data, selected }: NodeProps
             <Zap size={11} color="#f59e0b" />
           </span>
         )}
-        <span style={{ marginLeft: 'auto' }} title={d.status}>
-          {STATUS_ICONS[d.status]}
+        <span style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '5px' }}>
+          {complexity > 1 && (
+            <span
+              title={`Cyclomatic complexity: ${complexity}`}
+              style={{
+                background: complexity > 10 ? '#ef4444' : complexity > 5 ? '#f59e0b' : '#22c55e',
+                color: '#fff', borderRadius: '10px', fontSize: '9px',
+                padding: '0 5px', fontWeight: 700, lineHeight: '14px',
+                minWidth: '16px', textAlign: 'center',
+              }}
+            >
+              {complexity}
+            </span>
+          )}
+          <span title={d.status}>{STATUS_ICONS[d.status]}</span>
         </span>
       </div>
 

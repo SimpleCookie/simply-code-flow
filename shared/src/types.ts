@@ -114,6 +114,15 @@ export const BRANCH_HANDLE_COLORS = {
   false: '#ef4444',
   body: '#06b6d4',
   complete: '#a855f7',
+  // try-catch handles
+  try: '#6366f1',
+  catch: '#f97316',
+  finally: '#94a3b8',
+  // switch handles
+  case: '#f59e0b',
+  default: '#64748b',
+  // sequential
+  next: '#475569',
 }
 
 export const EDGE_KIND_COLORS: Record<EdgeKind, string> = {
