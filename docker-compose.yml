@@ -1,0 +1,25 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: simply-code-flow
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+    volumes:
+      - scf-data:/app/data
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+      DB_PATH: /app/data/flows.db
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3001/api/flows"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  scf-data:
+    driver: local

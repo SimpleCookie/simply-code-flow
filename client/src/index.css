@@ -1,0 +1,35 @@
+@import "tailwindcss";
+
+@theme {
+  --color-bg-primary: #0f1117;
+  --color-bg-secondary: #1a1d27;
+  --color-bg-card: #252836;
+  --color-bg-hover: #2e3145;
+  --color-border: #353848;
+  --color-text: #e2e8f0;
+  --color-text-muted: #94a3b8;
+  --color-accent: #6366f1;
+  --color-accent-hover: #4f46e5;
+  --color-danger: #ef4444;
+  --color-success: #22c55e;
+  --color-warning: #f59e0b;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+html, body, #root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  background-color: var(--color-bg-primary);
+  color: var(--color-text);
+  font-family: ui-sans-serif, system-ui, sans-serif;
+}
+.react-flow__background { background-color: var(--color-bg-primary) !important; }
+.react-flow__minimap { background-color: var(--color-bg-secondary) !important; border: 1px solid var(--color-border); border-radius: 6px; }
+.react-flow__controls { background-color: var(--color-bg-secondary); border: 1px solid var(--color-border); border-radius: 6px; }
+.react-flow__controls-button { background-color: var(--color-bg-secondary) !important; border-bottom-color: var(--color-border) !important; color: var(--color-text) !important; fill: var(--color-text) !important; }
+.react-flow__controls-button:hover { background-color: var(--color-bg-hover) !important; }
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--color-border); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--color-text-muted); }

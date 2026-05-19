@@ -1,0 +1,27 @@
+{
+  "name": "@scf/server",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsup src/index.ts --format esm --out-dir dist --clean",
+    "start": "node dist/index.js"
+  },
+  "dependencies": {
+    "@scf/shared": "*",
+    "cors": "^2.8.5",
+    "express": "^4.21.2",
+    "express-rate-limit": "^7.5.0",
+    "helmet": "^8.0.0",
+    "nanoid": "^5.1.5"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.17",
+    "@types/express": "^5.0.0",
+    "@types/node": "^24.0.0",
+    "tsup": "^8.4.0",
+    "tsx": "^4.19.0",
+    "typescript": "~6.0.2"
+  }
+}
