@@ -1,5 +1,5 @@
 import { useMemo, useCallback } from 'react'
-import { ReactFlow, Controls, Background, BackgroundVariant, type Node, type Edge } from '@xyflow/react'
+import { ReactFlow, ReactFlowProvider, Controls, Background, BackgroundVariant, type Node, type Edge } from '@xyflow/react'
 import { extractCfg, layoutCfg } from '../../lib/cfg/index.ts'
 import type { CfgNode, CfgEdge } from '../../lib/cfg/index.ts'
 import { LoopNode } from './LoopNode.tsx'
@@ -143,23 +143,25 @@ export function CfgCanvas({ code, language: _language, nodeLabel, onJumpTo }: Cf
         Complexity: {complexity}{complexity > 10 ? ' ⚠' : ''}
       </div>
 
-      <ReactFlow
-        nodes={rfNodes}
-        edges={rfEdges}
-        nodeTypes={nodeTypes}
-        edgeTypes={edgeTypes}
-        onNodeClick={onNodeClick}
-        fitView
-        fitViewOptions={{ padding: 0.15 }}
-        nodesDraggable={true}
-        nodesConnectable={false}
-        elementsSelectable={true}
-        colorMode="dark"
-        proOptions={{ hideAttribution: true }}
-      >
-        <Background variant={BackgroundVariant.Dots} gap={20} size={1} color="#1e293b" />
-        <Controls showInteractive={false} style={{ background: '#1e293b', border: '1px solid #334155' }} />
-      </ReactFlow>
+      <ReactFlowProvider>
+        <ReactFlow
+          nodes={rfNodes}
+          edges={rfEdges}
+          nodeTypes={nodeTypes}
+          edgeTypes={edgeTypes}
+          onNodeClick={onNodeClick}
+          fitView
+          fitViewOptions={{ padding: 0.15 }}
+          nodesDraggable={true}
+          nodesConnectable={false}
+          elementsSelectable={true}
+          colorMode="dark"
+          proOptions={{ hideAttribution: true }}
+        >
+          <Background variant={BackgroundVariant.Dots} gap={20} size={1} color="#1e293b" />
+          <Controls showInteractive={false} style={{ background: '#1e293b', border: '1px solid #334155' }} />
+        </ReactFlow>
+      </ReactFlowProvider>
     </div>
   )
 }
