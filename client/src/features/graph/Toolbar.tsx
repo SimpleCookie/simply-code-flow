@@ -1,13 +1,13 @@
-import { useReactFlow } from '@xyflow/react';
-import { LayoutDashboard, Link, Download, ChevronDown, ListChecks, CloudOff, Cloud, Loader, AlertCircle } from 'lucide-react';
-import type { ReactElement } from 'react';
-import { useState, useRef } from 'react';
-import { useFlowStore, type SaveStatus } from '../../store/flowStore.ts';
-import { useUIStore } from '../../store/uiStore.ts';
-import { applyDagreLayout } from '../../lib/layout/index.ts';
-import { exportAsJSON, exportAsPNG, exportAsMarkdown, exportAsMermaid } from '../export/exportUtils.ts';
-import { api } from '../../lib/api.ts';
-import type { Flow } from '@scf/shared';
+import { useReactFlow } from '@xyflow/react'
+import { LayoutDashboard, Link, Download, ChevronDown, ListChecks, CloudOff, Cloud, Loader, AlertCircle, Undo2, Redo2 } from 'lucide-react'
+import type { ReactElement } from 'react'
+import { useState, useRef } from 'react'
+import { useFlowStore, type SaveStatus } from '../../store/flowStore.ts'
+import { useUIStore } from '../../store/uiStore.ts'
+import { applyDagreLayout } from '../../lib/layout/index.ts'
+import { exportAsJSON, exportAsPNG, exportAsMarkdown, exportAsMermaid } from '../export/exportUtils.ts'
+import { api } from '../../lib/api.ts'
+import type { Flow } from '@scf/shared'
 
 const SAVE_STATUS_UI: Record<SaveStatus, { icon: ReactElement; label: string; color: string }> = {
   idle: { icon: <Cloud size={13} />, label: 'Saved', color: 'var(--color-text-muted)' },
@@ -15,52 +15,56 @@ const SAVE_STATUS_UI: Record<SaveStatus, { icon: ReactElement; label: string; co
   saved: { icon: <Cloud size={13} />, label: 'Saved', color: 'var(--color-success)' },
   error: { icon: <CloudOff size={13} />, label: 'Save failed', color: 'var(--color-danger)' },
   conflict: { icon: <AlertCircle size={13} />, label: 'Conflict!', color: 'var(--color-warning)' },
-};
+}
 
 interface Props {
-  flowId: string;
-  flowName: string;
-  onNameChange: (name: string) => void;
+  flowId: string
+  flowName: string
+  onNameChange: (name: string) => void
 }
 
 export function Toolbar({ flowId, flowName, onNameChange }: Props) {
-  const { getNodes, getEdges, setNodes } = useReactFlow();
-  const storeSetNodes = useFlowStore((s) => s.setNodes);
-  const openSnippetModal = useUIStore((s) => s.openSnippetModal);
-  const todoOpen = useUIStore((s) => s.todoOpen);
-  const setTodoOpen = useUIStore((s) => s.setTodoOpen);
-  const saveStatus = useFlowStore((s) => s.saveStatus);
-  const saveError = useFlowStore((s) => s.saveError);
-  const flow = useFlowStore((s) => s.flow);
-  const save = useFlowStore((s) => s.save);
+  const { getNodes, getEdges, setNodes } = useReactFlow()
+  const storeSetNodes = useFlowStore((s) => s.setNodes)
+  const openSnippetModal = useUIStore((s) => s.openSnippetModal)
+  const todoOpen = useUIStore((s) => s.todoOpen)
+  const setTodoOpen = useUIStore((s) => s.setTodoOpen)
+  const saveStatus = useFlowStore((s) => s.saveStatus)
+  const saveError = useFlowStore((s) => s.saveError)
+  const flow = useFlowStore((s) => s.flow)
+  const save = useFlowStore((s) => s.save)
+  const undo = useFlowStore((s) => s.undo)
+  const redo = useFlowStore((s) => s.redo)
+  const pastLen = useFlowStore((s) => s.past.length)
+  const futureLen = useFlowStore((s) => s.future.length)
 
-  const [exportOpen, setExportOpen] = useState(false);
-  const [editingName, setEditingName] = useState(false);
-  const [nameValue, setNameValue] = useState(flowName);
-  const exportRef = useRef<HTMLDivElement>(null);
+  const [exportOpen, setExportOpen] = useState(false)
+  const [editingName, setEditingName] = useState(false)
+  const [nameValue, setNameValue] = useState(flowName)
+  const exportRef = useRef<HTMLDivElement>(null)
 
   const handleAutoLayout = () => {
-    const layouted = applyDagreLayout(getNodes(), getEdges());
-    setNodes(layouted);
-    storeSetNodes(layouted);
-  };
+    const layouted = applyDagreLayout(getNodes(), getEdges())
+    setNodes(layouted)
+    storeSetNodes(layouted)
+  }
 
   const handleCopyLink = () => {
-    navigator.clipboard.writeText(window.location.href);
-  };
+    navigator.clipboard.writeText(window.location.href)
+  }
 
   const handleExport = async (type: 'json' | 'png' | 'md' | 'mermaid') => {
-    if (!flow) return;
-    setExportOpen(false);
-    const nodes = getNodes();
-    const edges = getEdges();
-    if (type === 'json') exportAsJSON(flow);
-    if (type === 'png') await exportAsPNG();
-    if (type === 'md') exportAsMarkdown(flow, nodes, edges);
-    if (type === 'mermaid') exportAsMermaid(flow, nodes, edges);
-  };
+    if (!flow) return
+    setExportOpen(false)
+    const nodes = getNodes()
+    const edges = getEdges()
+    if (type === 'json') exportAsJSON(flow)
+    if (type === 'png') await exportAsPNG()
+    if (type === 'md') exportAsMarkdown(flow, nodes, edges)
+    if (type === 'mermaid') exportAsMermaid(flow, nodes, edges)
+  }
 
-  const statusUi = SAVE_STATUS_UI[saveStatus];
+  const statusUi = SAVE_STATUS_UI[saveStatus]
 
   return (
     <div style={{
@@ -82,14 +86,14 @@ export function Toolbar({ flowId, flowName, onNameChange }: Props) {
         <input
           value={nameValue}
           onChange={(e) => setNameValue(e.target.value)}
-          onBlur={() => { setEditingName(false); if (nameValue.trim()) onNameChange(nameValue.trim()); }}
-          onKeyDown={(e) => { if (e.key === 'Enter') { setEditingName(false); if (nameValue.trim()) onNameChange(nameValue.trim()); } if (e.key === 'Escape') { setEditingName(false); setNameValue(flowName); } }}
+          onBlur={() => { setEditingName(false); if (nameValue.trim()) onNameChange(nameValue.trim()) }}
+          onKeyDown={(e) => { if (e.key === 'Enter') { setEditingName(false); if (nameValue.trim()) onNameChange(nameValue.trim()) } if (e.key === 'Escape') { setEditingName(false); setNameValue(flowName) } }}
           autoFocus
           style={{ background: 'var(--color-bg-card)', border: '1px solid var(--color-accent)', borderRadius: '5px', color: 'var(--color-text)', fontSize: '14px', fontWeight: 600, padding: '3px 8px', outline: 'none', maxWidth: '260px' }}
         />
       ) : (
         <span
-          onClick={() => { setEditingName(true); setNameValue(flowName); }}
+          onClick={() => { setEditingName(true); setNameValue(flowName) }}
           title="Click to rename"
           style={{ fontSize: '14px', fontWeight: 600, color: 'var(--color-text)', cursor: 'text', maxWidth: '260px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
         >
@@ -108,6 +112,26 @@ export function Toolbar({ flowId, flowName, onNameChange }: Props) {
         {statusUi.icon} {statusUi.label}
         {saveStatus === 'conflict' && <span style={{ fontSize: '11px' }}>(click to reload)</span>}
       </div>
+
+      <div style={{ width: '1px', height: '20px', background: 'var(--color-border)', margin: '0 4px' }} />
+
+      {/* Undo / Redo */}
+      <button
+        onClick={undo}
+        disabled={pastLen === 0}
+        title="Undo (Ctrl+Z)"
+        style={{ display: 'flex', alignItems: 'center', padding: '6px 8px', background: 'none', border: '1px solid transparent', borderRadius: '6px', color: pastLen > 0 ? 'var(--color-text-muted)' : 'var(--color-border)', cursor: pastLen > 0 ? 'pointer' : 'not-allowed', opacity: pastLen > 0 ? 1 : 0.4 }}
+      >
+        <Undo2 size={14} />
+      </button>
+      <button
+        onClick={redo}
+        disabled={futureLen === 0}
+        title="Redo (Ctrl+Shift+Z)"
+        style={{ display: 'flex', alignItems: 'center', padding: '6px 8px', background: 'none', border: '1px solid transparent', borderRadius: '6px', color: futureLen > 0 ? 'var(--color-text-muted)' : 'var(--color-border)', cursor: futureLen > 0 ? 'pointer' : 'not-allowed', opacity: futureLen > 0 ? 1 : 0.4 }}
+      >
+        <Redo2 size={14} />
+      </button>
 
       <div style={{ width: '1px', height: '20px', background: 'var(--color-border)', margin: '0 4px' }} />
 
@@ -175,16 +199,16 @@ export function Toolbar({ flowId, flowName, onNameChange }: Props) {
             >
               Import JSON
               <input type="file" accept=".json" style={{ display: 'none' }} onChange={async (e) => {
-                const file = e.target.files?.[0];
-                if (!file) return;
-                setExportOpen(false);
-                const text = await file.text();
+                const file = e.target.files?.[0]
+                if (!file) return
+                setExportOpen(false)
+                const text = await file.text()
                 try {
-                  const data = JSON.parse(text);
-                  const imported = await api_import(data, flowId);
-                  if (imported) window.location.reload();
+                  const data = JSON.parse(text)
+                  const imported = await api_import(data, flowId)
+                  if (imported) window.location.reload()
                 } catch {
-                  alert('Invalid JSON file');
+                  alert('Invalid JSON file')
                 }
               }} />
             </label>
@@ -194,18 +218,18 @@ export function Toolbar({ flowId, flowName, onNameChange }: Props) {
       {/* CSS for spin animation */}
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>
-  );
+  )
 }
 
 // inline import helper
 async function api_import(data: unknown, flowId: string): Promise<boolean> {
-  const flowVersion = useFlowStore.getState().flow?.version ?? 1;
+  const flowVersion = useFlowStore.getState().flow?.version ?? 1
   try {
-    const payload = data as Record<string, unknown>;
-    await api.updateFlow(flowId, { ...payload, id: flowId, version: flowVersion } as Flow);
-    return true;
+    const payload = data as Record<string, unknown>
+    await api.updateFlow(flowId, { ...payload, id: flowId, version: flowVersion } as Flow)
+    return true
   } catch {
-    alert('Import failed: version conflict or invalid data. Try reloading first.');
-    return false;
+    alert('Import failed: version conflict or invalid data. Try reloading first.')
+    return false
   }
 }

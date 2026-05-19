@@ -1,53 +1,63 @@
-import { useState } from 'react';
-import Editor from '@monaco-editor/react';
-import { X, Trash2, Plus, ExternalLink, ChevronRight, ChevronLeft } from 'lucide-react';
-import { useFlowStore } from '../../store/flowStore.ts';
-import { useUIStore } from '../../store/uiStore.ts';
-import { NODE_KINDS, EDGE_KINDS, KIND_COLORS, EDGE_KIND_COLORS } from '@scf/shared';
-import type { NodeKind, NodeStatus, EdgeKind, EdgeConfidence } from '@scf/shared';
-import type { CustomNodeData } from '../graph/CustomNode.tsx';
-import type { CustomEdgeData } from '../graph/CustomEdge.tsx';
-import { SUPPORTED_LANGUAGES } from '../../lib/detect/index.ts';
+import { useState } from 'react'
+import { nanoid } from 'nanoid'
+import Editor from '@monaco-editor/react'
+import { X, Trash2, Plus, ExternalLink, ChevronRight, ChevronLeft, ArrowLeftRight } from 'lucide-react'
+import { useFlowStore } from '../../store/flowStore.ts'
+import { useUIStore } from '../../store/uiStore.ts'
+import { NODE_KINDS, EDGE_KINDS, KIND_COLORS, EDGE_KIND_COLORS } from '@scf/shared'
+import type { NodeKind, NodeStatus, EdgeKind, EdgeConfidence } from '@scf/shared'
+import type { CustomNodeData } from '../graph/CustomNode.tsx'
+import type { CustomEdgeData } from '../graph/CustomEdge.tsx'
+import { SUPPORTED_LANGUAGES } from '../../lib/detect/index.ts'
 
 const inputStyle: React.CSSProperties = {
   width: '100%', padding: '6px 10px',
   background: 'var(--color-bg-primary)', border: '1px solid var(--color-border)',
   borderRadius: '5px', color: 'var(--color-text)', fontSize: '13px', outline: 'none',
-};
+}
 
 const labelStyle: React.CSSProperties = {
   display: 'block', fontSize: '11px', fontWeight: 600,
   color: 'var(--color-text-muted)', textTransform: 'uppercase',
   letterSpacing: '0.06em', marginBottom: '4px',
-};
+}
 
 const sectionStyle: React.CSSProperties = {
   padding: '14px 16px',
   borderBottom: '1px solid var(--color-border)',
-};
+}
 
 export function InspectorPanel() {
-  const selectedNodeId = useUIStore((s) => s.selectedNodeId);
-  const selectedEdgeId = useUIStore((s) => s.selectedEdgeId);
-  const inspectorOpen = useUIStore((s) => s.inspectorOpen);
-  const setInspectorOpen = useUIStore((s) => s.setInspectorOpen);
-  const clearSelection = useUIStore((s) => s.clearSelection);
-  const selectNode = useUIStore((s) => s.selectNode);
-  const openSnippetModal = useUIStore((s) => s.openSnippetModal);
+  const selectedNodeId = useUIStore((s) => s.selectedNodeId)
+  const selectedEdgeId = useUIStore((s) => s.selectedEdgeId)
+  const inspectorOpen = useUIStore((s) => s.inspectorOpen)
+  const setInspectorOpen = useUIStore((s) => s.setInspectorOpen)
+  const clearSelection = useUIStore((s) => s.clearSelection)
+  const selectNode = useUIStore((s) => s.selectNode)
+  const openSnippetModal = useUIStore((s) => s.openSnippetModal)
 
-  const nodes = useFlowStore((s) => s.nodes);
-  const edges = useFlowStore((s) => s.edges);
-  const updateNode = useFlowStore((s) => s.updateNode);
-  const deleteNode = useFlowStore((s) => s.deleteNode);
-  const updateEdge = useFlowStore((s) => s.updateEdge);
-  const deleteEdge = useFlowStore((s) => s.deleteEdge);
+  const nodes = useFlowStore((s) => s.nodes)
+  const edges = useFlowStore((s) => s.edges)
+  const updateNode = useFlowStore((s) => s.updateNode)
+  const deleteNode = useFlowStore((s) => s.deleteNode)
+  const updateEdge = useFlowStore((s) => s.updateEdge)
+  const deleteEdge = useFlowStore((s) => s.deleteEdge)
+  const addEdge = useFlowStore((s) => s.addEdge)
+  const reconnectEdge = useFlowStore((s) => s.reconnectEdge)
+  const swapEdgeDirection = useFlowStore((s) => s.swapEdgeDirection)
 
-  const [codeExpanded, setCodeExpanded] = useState(false);
+  const [codeExpanded, setCodeExpanded] = useState(false)
+  // "Add Connection" form state (node inspector)
+  const [addConnOpen, setAddConnOpen] = useState(false)
+  const [addConnTarget, setAddConnTarget] = useState('')
+  const [addConnKind, setAddConnKind] = useState<EdgeKind>('calls')
+  const [addConnConf, setAddConnConf] = useState<EdgeConfidence>('suspected')
+  const [addConnCond, setAddConnCond] = useState('')
 
-  const node = selectedNodeId ? nodes.find((n) => n.id === selectedNodeId) : null;
-  const edge = selectedEdgeId ? edges.find((e) => e.id === selectedEdgeId) : null;
-  const nodeData = node ? (node.data as CustomNodeData) : null;
-  const edgeData = edge ? (edge.data as CustomEdgeData) : null;
+  const node = selectedNodeId ? nodes.find((n) => n.id === selectedNodeId) : null
+  const edge = selectedEdgeId ? edges.find((e) => e.id === selectedEdgeId) : null
+  const nodeData = node ? (node.data as CustomNodeData) : null
+  const edgeData = edge ? (edge.data as CustomEdgeData) : null
 
   if (!inspectorOpen) {
     return (
@@ -64,7 +74,7 @@ export function InspectorPanel() {
       >
         <ChevronLeft size={16} />
       </button>
-    );
+    )
   }
 
   const panelStyle: React.CSSProperties = {
@@ -76,17 +86,17 @@ export function InspectorPanel() {
     flexDirection: 'column',
     overflow: 'hidden',
     position: 'relative',
-  };
+  }
 
   const headerStyle: React.CSSProperties = {
     display: 'flex', alignItems: 'center', justifyContent: 'space-between',
     padding: '12px 16px', borderBottom: '1px solid var(--color-border)', flexShrink: 0,
-  };
+  }
 
   // ——— NODE INSPECTOR ———
   if (nodeData && node) {
-    const color = KIND_COLORS[nodeData.kind] ?? '#475569';
-    const nodeEdges = edges.filter((e) => e.source === node.id || e.target === node.id);
+    const color = KIND_COLORS[nodeData.kind] ?? '#475569'
+    const nodeEdges = edges.filter((e) => e.source === node.id || e.target === node.id)
 
     return (
       <div style={panelStyle}>
@@ -101,10 +111,10 @@ export function InspectorPanel() {
             <button onClick={() => openSnippetModal(node.id)} title="Add callee" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-muted)', padding: '4px', borderRadius: '4px' }}>
               <Plus size={15} />
             </button>
-            <button onClick={() => { deleteNode(node.id); clearSelection(); }} title="Delete node" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-danger)', padding: '4px', borderRadius: '4px' }}>
+            <button onClick={() => { deleteNode(node.id); clearSelection() }} title="Delete node" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-danger)', padding: '4px', borderRadius: '4px' }}>
               <Trash2 size={15} />
             </button>
-            <button onClick={() => { setInspectorOpen(false); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-muted)', padding: '4px', borderRadius: '4px' }}>
+            <button onClick={() => { setInspectorOpen(false) }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-muted)', padding: '4px', borderRadius: '4px' }}>
               <ChevronRight size={15} />
             </button>
           </div>
@@ -194,49 +204,126 @@ export function InspectorPanel() {
           </div>
 
           {/* Connected edges */}
-          {nodeEdges.length > 0 && (
-            <div style={sectionStyle}>
-              <label style={labelStyle}>Connections ({nodeEdges.length})</label>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                {nodeEdges.map((e) => {
-                  const d = (e.data ?? {}) as CustomEdgeData;
-                  const isOut = e.source === node.id;
-                  const otherId = isOut ? e.target : e.source;
-                  const otherNode = nodes.find((n) => n.id === otherId);
-                  const otherLabel = otherNode ? (otherNode.data as CustomNodeData).label : otherId;
-                  const edgeColor = EDGE_KIND_COLORS[d.kind] ?? '#475569';
-                  return (
-                    <div
-                      key={e.id}
-                      onClick={() => selectNode(otherId)}
-                      style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '5px 8px', background: 'var(--color-bg-card)', borderRadius: '5px', cursor: 'pointer', fontSize: '12px' }}
-                    >
-                      <span style={{ color: isOut ? edgeColor : 'var(--color-text-muted)', fontSize: '10px' }}>{isOut ? '→' : '←'}</span>
-                      <span style={{ background: edgeColor + '22', color: edgeColor, borderRadius: '3px', fontSize: '9px', padding: '1px 5px', fontWeight: 600 }}>{d.kind}</span>
-                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{otherLabel}</span>
-                    </div>
-                  );
-                })}
-              </div>
+          <div style={sectionStyle}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+              <label style={{ ...labelStyle, marginBottom: 0 }}>Connections ({nodeEdges.length})</label>
+              <button
+                onClick={() => { setAddConnOpen((v) => !v); setAddConnTarget(''); setAddConnKind('calls'); setAddConnConf('suspected'); setAddConnCond('') }}
+                style={{ display: 'flex', alignItems: 'center', gap: '4px', background: 'none', border: '1px solid var(--color-border)', borderRadius: '4px', color: 'var(--color-accent)', cursor: 'pointer', fontSize: '11px', padding: '2px 7px' }}
+                title="Add connection"
+              >
+                <Plus size={11} /> Add
+              </button>
             </div>
-          )}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              {nodeEdges.map((e) => {
+                const d = (e.data ?? {}) as CustomEdgeData
+                const isOut = e.source === node.id
+                const otherId = isOut ? e.target : e.source
+                const otherNode = nodes.find((n) => n.id === otherId)
+                const otherLabel = otherNode ? (otherNode.data as CustomNodeData).label : otherId
+                const edgeColor = EDGE_KIND_COLORS[d.kind] ?? '#475569'
+                return (
+                  <div
+                    key={e.id}
+                    style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '4px 8px', background: 'var(--color-bg-card)', borderRadius: '5px', fontSize: '12px' }}
+                  >
+                    <span
+                      onClick={() => selectNode(otherId)}
+                      style={{ display: 'flex', alignItems: 'center', gap: '5px', flex: 1, cursor: 'pointer', overflow: 'hidden' }}
+                    >
+                      <span style={{ color: isOut ? edgeColor : 'var(--color-text-muted)', fontSize: '10px', flexShrink: 0 }}>{isOut ? '→' : '←'}</span>
+                      <span style={{ background: edgeColor + '22', color: edgeColor, borderRadius: '3px', fontSize: '9px', padding: '1px 5px', fontWeight: 600, flexShrink: 0 }}>{d.kind}</span>
+                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{otherLabel}</span>
+                    </span>
+                    <button
+                      onClick={() => deleteEdge(e.id)}
+                      title="Disconnect"
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-danger)', padding: '2px', borderRadius: '3px', flexShrink: 0, opacity: 0.7 }}
+                    >
+                      <Trash2 size={11} />
+                    </button>
+                  </div>
+                )
+              })}
+            </div>
+
+            {/* Add Connection form */}
+            {addConnOpen && (
+              <div style={{ marginTop: '8px', padding: '10px', background: 'var(--color-bg-primary)', borderRadius: '6px', border: '1px solid var(--color-border)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <div>
+                  <label style={labelStyle}>Target Node</label>
+                  <select
+                    style={inputStyle}
+                    value={addConnTarget}
+                    onChange={(e) => setAddConnTarget(e.target.value)}
+                  >
+                    <option value="">— select —</option>
+                    {nodes
+                      .filter((n) => n.id !== node.id)
+                      .map((n) => (
+                        <option key={n.id} value={n.id}>
+                          {(n.data as CustomNodeData).label || n.id}
+                        </option>
+                      ))}
+                  </select>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
+                  <div>
+                    <label style={labelStyle}>Kind</label>
+                    <select style={inputStyle} value={addConnKind} onChange={(e) => setAddConnKind(e.target.value as EdgeKind)}>
+                      {EDGE_KINDS.map((k) => <option key={k} value={k}>{k}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label style={labelStyle}>Confidence</label>
+                    <select style={inputStyle} value={addConnConf} onChange={(e) => setAddConnConf(e.target.value as EdgeConfidence)}>
+                      <option value="confirmed">Confirmed</option>
+                      <option value="suspected">Suspected</option>
+                    </select>
+                  </div>
+                </div>
+                <div>
+                  <label style={labelStyle}>Condition / Label</label>
+                  <input style={inputStyle} value={addConnCond} onChange={(e) => setAddConnCond(e.target.value)} placeholder="optional" />
+                </div>
+                <div style={{ display: 'flex', gap: '6px' }}>
+                  <button
+                    disabled={!addConnTarget}
+                    onClick={() => {
+                      if (!addConnTarget) return
+                      addEdge({ id: nanoid(), source: node.id, target: addConnTarget, kind: addConnKind, confidence: addConnConf, condition: addConnCond || undefined })
+                      setAddConnOpen(false)
+                    }}
+                    style={{ flex: 1, padding: '6px', background: 'var(--color-accent)', border: 'none', borderRadius: '5px', color: '#fff', cursor: addConnTarget ? 'pointer' : 'not-allowed', fontSize: '12px', fontWeight: 600, opacity: addConnTarget ? 1 : 0.5 }}
+                  >
+                    Connect
+                  </button>
+                  <button
+                    onClick={() => setAddConnOpen(false)}
+                    style={{ padding: '6px 10px', background: 'none', border: '1px solid var(--color-border)', borderRadius: '5px', color: 'var(--color-text-muted)', cursor: 'pointer', fontSize: '12px' }}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </div>
-    );
+    )
   }
 
   // ——— EDGE INSPECTOR ———
   if (edgeData && edge) {
-    const color = EDGE_KIND_COLORS[edgeData.kind] ?? '#475569';
-    const sourceNode = nodes.find((n) => n.id === edge.source);
-    const targetNode = nodes.find((n) => n.id === edge.target);
+    const color = EDGE_KIND_COLORS[edgeData.kind] ?? '#475569'
 
     return (
       <div style={panelStyle}>
         <div style={headerStyle}>
           <span style={{ color, fontWeight: 600, fontSize: '14px' }}>Edge</span>
           <div style={{ display: 'flex', gap: '4px' }}>
-            <button onClick={() => { deleteEdge(edge.id); clearSelection(); }} title="Delete edge" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-danger)', padding: '4px', borderRadius: '4px' }}>
+            <button onClick={() => { deleteEdge(edge.id); clearSelection() }} title="Delete edge" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-danger)', padding: '4px', borderRadius: '4px' }}>
               <Trash2 size={15} />
             </button>
             <button onClick={() => setInspectorOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-muted)', padding: '4px', borderRadius: '4px' }}>
@@ -245,11 +332,44 @@ export function InspectorPanel() {
           </div>
         </div>
         <div style={{ flex: 1, overflow: 'auto' }}>
+          {/* Source / Target selects + Swap */}
           <div style={sectionStyle}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: 'var(--color-text-muted)' }}>
-              <span style={{ color: 'var(--color-text)' }}>{(sourceNode?.data as CustomNodeData)?.label ?? edge.source}</span>
-              <span style={{ color }}>→</span>
-              <span style={{ color: 'var(--color-text)' }}>{(targetNode?.data as CustomNodeData)?.label ?? edge.target}</span>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', gap: '6px' }}>
+              <div>
+                <label style={labelStyle}>Source</label>
+                <select
+                  style={inputStyle}
+                  value={edge.source}
+                  onChange={(e) => reconnectEdge(edge.id, e.target.value, edge.target)}
+                >
+                  {nodes.map((n) => (
+                    <option key={n.id} value={n.id}>
+                      {(n.data as CustomNodeData).label || n.id}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <button
+                onClick={() => swapEdgeDirection(edge.id)}
+                title="Swap direction"
+                style={{ alignSelf: 'flex-end', marginBottom: '2px', background: 'none', border: '1px solid var(--color-border)', borderRadius: '5px', cursor: 'pointer', color: color, padding: '5px 7px' }}
+              >
+                <ArrowLeftRight size={13} />
+              </button>
+              <div>
+                <label style={labelStyle}>Target</label>
+                <select
+                  style={inputStyle}
+                  value={edge.target}
+                  onChange={(e) => reconnectEdge(edge.id, edge.source, e.target.value)}
+                >
+                  {nodes.map((n) => (
+                    <option key={n.id} value={n.id}>
+                      {(n.data as CustomNodeData).label || n.id}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
           </div>
           <div style={{ ...sectionStyle, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
@@ -277,7 +397,7 @@ export function InspectorPanel() {
           </div>
         </div>
       </div>
-    );
+    )
   }
 
   // Empty state (panel open but nothing selected)
@@ -293,5 +413,5 @@ export function InspectorPanel() {
         Click a node or edge to inspect it.
       </div>
     </div>
-  );
+  )
 }

@@ -1,97 +1,137 @@
-import { useCallback, useRef } from 'react';
+import { useCallback, useRef } from 'react'
 import {
   ReactFlow,
   Background,
   BackgroundVariant,
   Controls,
   MiniMap,
-  addEdge,
+  applyNodeChanges,
+  applyEdgeChanges,
   type Connection,
+  type Edge,
   type NodeTypes,
   type EdgeTypes,
   type OnNodesChange,
   type OnEdgesChange,
-} from '@xyflow/react';
-import '@xyflow/react/dist/style.css';
-import { nanoid } from 'nanoid';
-import { CustomNode } from './CustomNode.tsx';
-import { CustomEdge } from './CustomEdge.tsx';
-import { useFlowStore } from '../../store/flowStore.ts';
-import { useUIStore } from '../../store/uiStore.ts';
-import { KIND_COLORS } from '@scf/shared';
-import type { CustomNodeData } from './CustomNode.tsx';
+  type OnReconnect,
+} from '@xyflow/react'
+import '@xyflow/react/dist/style.css'
+import { nanoid } from 'nanoid'
+import { CustomNode } from './CustomNode.tsx'
+import { CustomEdge } from './CustomEdge.tsx'
+import { useFlowStore } from '../../store/flowStore.ts'
+import { useUIStore } from '../../store/uiStore.ts'
+import { KIND_COLORS } from '@scf/shared'
+import type { CustomNodeData } from './CustomNode.tsx'
 
 // Defined outside component to avoid React Flow re-registration warnings
-const nodeTypes: NodeTypes = { codeNode: CustomNode };
-const edgeTypes: EdgeTypes = { codeEdge: CustomEdge };
+const nodeTypes: NodeTypes = { codeNode: CustomNode }
+const edgeTypes: EdgeTypes = { codeEdge: CustomEdge }
 
 export function GraphCanvas() {
-  const nodes = useFlowStore((s) => s.nodes);
-  const edges = useFlowStore((s) => s.edges);
-  const setNodes = useFlowStore((s) => s.setNodes);
-  const setEdges = useFlowStore((s) => s.setEdges);
-  const addEdgeToStore = useFlowStore((s) => s.addEdge);
+  const nodes = useFlowStore((s) => s.nodes)
+  const edges = useFlowStore((s) => s.edges)
+  const setNodes = useFlowStore((s) => s.setNodes)
+  const setEdges = useFlowStore((s) => s.setEdges)
+  const addEdgeToStore = useFlowStore((s) => s.addEdge)
+  const reconnectEdgeStore = useFlowStore((s) => s.reconnectEdge)
+  const pushHistory = useFlowStore((s) => s.pushHistory)
 
-  const selectNode = useUIStore((s) => s.selectNode);
-  const selectEdge = useUIStore((s) => s.selectEdge);
-  const clearSelection = useUIStore((s) => s.clearSelection);
+  const selectNode = useUIStore((s) => s.selectNode)
+  const selectEdge = useUIStore((s) => s.selectEdge)
+  const clearSelection = useUIStore((s) => s.clearSelection)
+  const openCodeOverlay = useUIStore((s) => s.openCodeOverlay)
 
-  const containerRef = useRef<HTMLDivElement>(null);
+  // Track whether a reconnect drag completed successfully
+  const reconnectSuccessful = useRef(false)
 
   const onNodesChange: OnNodesChange = useCallback(
     (changes) => {
-      // Imperatively apply changes while keeping store in sync
-      import('@xyflow/react').then(({ applyNodeChanges }) => {
-        setNodes(applyNodeChanges(changes, nodes));
-      });
+      const hasRemovals = changes.some((c) => c.type === 'remove')
+      if (hasRemovals) pushHistory()
+      setNodes(applyNodeChanges(changes, nodes))
     },
-    [nodes, setNodes],
-  );
+    [nodes, setNodes, pushHistory],
+  )
 
   const onEdgesChange: OnEdgesChange = useCallback(
     (changes) => {
-      import('@xyflow/react').then(({ applyEdgeChanges }) => {
-        setEdges(applyEdgeChanges(changes, edges));
-      });
+      setEdges(applyEdgeChanges(changes, edges))
     },
     [edges, setEdges],
-  );
+  )
 
   const onConnect = useCallback(
     (connection: Connection) => {
-      const newEdge = {
+      if (!connection.source || !connection.target) return
+      if (connection.source === connection.target) return
+      addEdgeToStore({
         id: nanoid(),
         source: connection.source,
         target: connection.target,
-        kind: 'calls' as const,
-        confidence: 'suspected' as const,
-      };
-      addEdgeToStore(newEdge);
-      setEdges(addEdge({ ...connection, id: newEdge.id, type: 'codeEdge' }, edges));
+        kind: 'calls',
+        confidence: 'suspected',
+      })
     },
-    [edges, setEdges, addEdgeToStore],
-  );
+    [addEdgeToStore],
+  )
+
+  const onReconnectStart = useCallback(() => {
+    reconnectSuccessful.current = false
+  }, [])
+
+  const onReconnect: OnReconnect = useCallback(
+    (oldEdge: Edge, newConnection: Connection) => {
+      reconnectSuccessful.current = true
+      if (!newConnection.source || !newConnection.target) return
+      reconnectEdgeStore(oldEdge.id, newConnection.source, newConnection.target)
+    },
+    [reconnectEdgeStore],
+  )
+
+  const onReconnectEnd = useCallback(
+    (_: MouseEvent | TouchEvent, _edge: Edge) => {
+      // If drop landed in empty space, snap back by doing nothing (edge still in store)
+      if (!reconnectSuccessful.current) {
+        // Force re-render by touching edges — no-op needed, store is source of truth
+        setEdges([...edges])
+      }
+      reconnectSuccessful.current = false
+    },
+    [edges, setEdges],
+  )
+
+  const onNodeDragStart = useCallback(() => {
+    pushHistory()
+  }, [pushHistory])
 
   const onNodeClick = useCallback(
     (_: React.MouseEvent, node: { id: string }) => {
-      selectNode(node.id);
+      selectNode(node.id)
     },
     [selectNode],
-  );
+  )
+
+  const onNodeDoubleClick = useCallback(
+    (_: React.MouseEvent, node: { id: string }) => {
+      openCodeOverlay(node.id)
+    },
+    [openCodeOverlay],
+  )
 
   const onEdgeClick = useCallback(
     (_: React.MouseEvent, edge: { id: string }) => {
-      selectEdge(edge.id);
+      selectEdge(edge.id)
     },
     [selectEdge],
-  );
+  )
 
   const onPaneClick = useCallback(() => {
-    clearSelection();
-  }, [clearSelection]);
+    clearSelection()
+  }, [clearSelection])
 
   return (
-    <div ref={containerRef} style={{ width: '100%', height: '100%' }}>
+    <div style={{ width: '100%', height: '100%' }}>
       <ReactFlow
         nodes={nodes}
         edges={edges}
@@ -100,12 +140,17 @@ export function GraphCanvas() {
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
+        onReconnect={onReconnect}
+        onReconnectStart={onReconnectStart}
+        onReconnectEnd={onReconnectEnd}
+        onNodeDragStart={onNodeDragStart}
         onNodeClick={onNodeClick}
+        onNodeDoubleClick={onNodeDoubleClick}
         onEdgeClick={onEdgeClick}
         onPaneClick={onPaneClick}
         fitView
         fitViewOptions={{ padding: 0.2 }}
-        defaultEdgeOptions={{ type: 'codeEdge' }}
+        defaultEdgeOptions={{ type: 'codeEdge', reconnectable: true }}
         deleteKeyCode="Delete"
         multiSelectionKeyCode="Shift"
         proOptions={{ hideAttribution: true }}
@@ -114,13 +159,13 @@ export function GraphCanvas() {
         <Controls showInteractive={false} />
         <MiniMap
           nodeColor={(n) => {
-            const d = n.data as CustomNodeData;
-            return KIND_COLORS[d?.kind] ?? '#475569';
+            const d = n.data as CustomNodeData
+            return KIND_COLORS[d?.kind] ?? '#475569'
           }}
           maskColor="rgba(15,17,23,0.7)"
           style={{ bottom: 56 }}
         />
       </ReactFlow>
     </div>
-  );
+  )
 }

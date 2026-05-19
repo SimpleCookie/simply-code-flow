@@ -1,20 +1,23 @@
-import { create } from 'zustand';
+import { create } from 'zustand'
 
 interface UIStore {
-  selectedNodeId: string | null;
-  selectedEdgeId: string | null;
-  inspectorOpen: boolean;
-  todoOpen: boolean;
-  snippetModalOpen: boolean;
-  snippetModalParentId: string | null;
+  selectedNodeId: string | null
+  selectedEdgeId: string | null
+  inspectorOpen: boolean
+  todoOpen: boolean
+  snippetModalOpen: boolean
+  snippetModalParentId: string | null
+  codeOverlayNodeId: string | null
 
-  selectNode: (id: string | null) => void;
-  selectEdge: (id: string | null) => void;
-  clearSelection: () => void;
-  setInspectorOpen: (open: boolean) => void;
-  setTodoOpen: (open: boolean) => void;
-  openSnippetModal: (parentId?: string) => void;
-  closeSnippetModal: () => void;
+  selectNode: (id: string | null) => void
+  selectEdge: (id: string | null) => void
+  clearSelection: () => void
+  setInspectorOpen: (open: boolean) => void
+  setTodoOpen: (open: boolean) => void
+  openSnippetModal: (parentId?: string) => void
+  closeSnippetModal: () => void
+  openCodeOverlay: (nodeId: string) => void
+  closeCodeOverlay: () => void
 }
 
 export const useUIStore = create<UIStore>((set) => ({
@@ -24,6 +27,7 @@ export const useUIStore = create<UIStore>((set) => ({
   todoOpen: false,
   snippetModalOpen: false,
   snippetModalParentId: null,
+  codeOverlayNodeId: null,
 
   selectNode: (id) => set({ selectedNodeId: id, selectedEdgeId: null, inspectorOpen: id !== null }),
   selectEdge: (id) => set({ selectedEdgeId: id, selectedNodeId: null, inspectorOpen: id !== null }),
@@ -33,4 +37,6 @@ export const useUIStore = create<UIStore>((set) => ({
   openSnippetModal: (parentId) =>
     set({ snippetModalOpen: true, snippetModalParentId: parentId ?? null }),
   closeSnippetModal: () => set({ snippetModalOpen: false, snippetModalParentId: null }),
-}));
+  openCodeOverlay: (nodeId) => set({ codeOverlayNodeId: nodeId }),
+  closeCodeOverlay: () => set({ codeOverlayNodeId: null }),
+}))
