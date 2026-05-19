@@ -57,8 +57,8 @@ function guessKind(code: string): NodeKind {
   if (/^\s*class\s+/m.test(code)) return 'class'
   if (/\b(SELECT|INSERT|UPDATE|DELETE|CREATE TABLE)\b/i.test(code)) return 'sql'
   if (/@(Get|Post|Put|Delete|Patch|RestController|RequestMapping|Controller|Route)\b/.test(code) ||
-      /\bapp\.(get|post|put|delete|patch)\s*\(/.test(code) ||
-      /\brouter\.(get|post|put|delete|patch)\s*\(/.test(code)) return 'endpoint'
+    /\bapp\.(get|post|put|delete|patch)\s*\(/.test(code) ||
+    /\brouter\.(get|post|put|delete|patch)\s*\(/.test(code)) return 'endpoint'
   if (/\b(emit|dispatch|publish|trigger|broadcast)\s*\(/.test(code)) return 'event'
   if (/\b(useState|useEffect|render\s*\(|<[A-Z][A-Za-z]+)/.test(code)) return 'ui'
   return 'function'
