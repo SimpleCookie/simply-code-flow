@@ -1,20 +1,20 @@
-import { Clock, PlusCircle } from 'lucide-react';
-import { useFlowStore } from '../../store/flowStore.ts';
-import { useUIStore } from '../../store/uiStore.ts';
-import type { CustomNodeData } from '../graph/CustomNode.tsx';
+import { Clock, PlusCircle } from 'lucide-react'
+import { useFlowStore } from '../../store/flowStore.ts'
+import { useUIStore } from '../../store/uiStore.ts'
+import type { CustomNodeData } from '../graph/CustomNode.tsx'
 
 export function TodoPanel() {
-  const todoOpen = useUIStore((s) => s.todoOpen);
-  const selectNode = useUIStore((s) => s.selectNode);
-  const openSnippetModal = useUIStore((s) => s.openSnippetModal);
-  const nodes = useFlowStore((s) => s.nodes);
+  const todoOpen = useUIStore((s) => s.todoOpen)
+  const selectNode = useUIStore((s) => s.selectNode)
+  const openSnippetModal = useUIStore((s) => s.openSnippetModal)
+  const nodes = useFlowStore((s) => s.nodes)
 
-  if (!todoOpen) return null;
+  if (!todoOpen) return null
 
   const stubs = nodes.filter((n) => {
-    const d = n.data as CustomNodeData;
-    return d.kind === 'stub' || d.status === 'todo' || !d.code;
-  });
+    const d = n.data as CustomNodeData
+    return d.kind === 'stub' || d.status === 'todo' || !d.code
+  })
 
   return (
     <div style={{
@@ -43,7 +43,7 @@ export function TodoPanel() {
           </div>
         ) : (
           stubs.map((n) => {
-            const d = n.data as CustomNodeData;
+            const d = n.data as CustomNodeData
             return (
               <div
                 key={n.id}
@@ -67,17 +67,17 @@ export function TodoPanel() {
                   </div>
                 </div>
                 <button
-                  onClick={(e) => { e.stopPropagation(); openSnippetModal(n.id); }}
+                  onClick={(e) => { e.stopPropagation(); openSnippetModal(n.id) }}
                   title="Fill in this stub"
                   style={{ marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-accent)', padding: '2px', flexShrink: 0, display: 'flex' }}
                 >
                   <PlusCircle size={13} />
                 </button>
               </div>
-            );
+            )
           })
         )}
       </div>
     </div>
-  );
+  )
 }

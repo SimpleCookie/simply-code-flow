@@ -1,27 +1,27 @@
-import { memo, type ReactElement } from 'react';
-import { Handle, Position, type NodeProps } from '@xyflow/react';
-import { KIND_COLORS } from '@scf/shared';
-import type { NodeKind, NodeStatus } from '@scf/shared';
-import { Zap, AlertCircle, CheckCircle, Clock } from 'lucide-react';
+import { memo, type ReactElement } from 'react'
+import { Handle, Position, type NodeProps } from '@xyflow/react'
+import { KIND_COLORS } from '@scf/shared'
+import type { NodeKind, NodeStatus } from '@scf/shared'
+import { Zap, AlertCircle, CheckCircle, Clock } from 'lucide-react'
 
 export interface CustomNodeData extends Record<string, unknown> {
-  label: string;
-  kind: NodeKind;
-  language?: string;
-  code: string;
-  filePath?: string;
-  lineRange?: [number, number];
-  notes?: string;
-  tags: string[];
-  status: NodeStatus;
-  isAsync?: boolean;
+  label: string
+  kind: NodeKind
+  language?: string
+  code: string
+  filePath?: string
+  lineRange?: [number, number]
+  notes?: string
+  tags: string[]
+  status: NodeStatus
+  isAsync?: boolean
 }
 
 const STATUS_ICONS: Record<NodeStatus, ReactElement> = {
   confirmed: <CheckCircle size={12} color="#22c55e" />,
   suspected: <AlertCircle size={12} color="#f59e0b" />,
   todo: <Clock size={12} color="#ef4444" />,
-};
+}
 
 const KIND_LABELS: Record<NodeKind, string> = {
   function: 'fn',
@@ -36,12 +36,12 @@ const KIND_LABELS: Record<NodeKind, string> = {
   config: 'config',
   stub: 'stub',
   unknown: '?',
-};
+}
 
 export const CustomNode = memo(function CustomNode({ data, selected }: NodeProps) {
-  const d = data as CustomNodeData;
-  const color = KIND_COLORS[d.kind] ?? '#475569';
-  const isStub = d.kind === 'stub' || !d.code;
+  const d = data as CustomNodeData
+  const color = KIND_COLORS[d.kind] ?? '#475569'
+  const isStub = d.kind === 'stub' || !d.code
 
   return (
     <div
@@ -142,5 +142,5 @@ export const CustomNode = memo(function CustomNode({ data, selected }: NodeProps
 
       <Handle type="source" position={Position.Bottom} style={{ background: color, border: 'none' }} />
     </div>
-  );
-});
+  )
+})

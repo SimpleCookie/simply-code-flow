@@ -1,50 +1,50 @@
-import { useState } from 'react';
-import { Modal } from '../../components/Modal.tsx';
-import { api } from '../../lib/api.ts';
+import { useState } from 'react'
+import { Modal } from '../../components/Modal.tsx'
+import { api } from '../../lib/api.ts'
 
 interface Props {
-  open: boolean;
-  onClose: () => void;
-  onCreate: (id: string) => void;
+  open: boolean
+  onClose: () => void
+  onCreate: (id: string) => void
 }
 
 export function CreateFlowModal({ open, onClose, onCreate }: Props) {
-  const [name, setName] = useState('');
-  const [description, setDescription] = useState('');
-  const [tags, setTags] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [name, setName] = useState('')
+  const [description, setDescription] = useState('')
+  const [tags, setTags] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
 
   const handleCreate = async () => {
-    if (!name.trim()) { setError('Name is required'); return; }
-    setLoading(true);
-    setError('');
+    if (!name.trim()) { setError('Name is required'); return }
+    setLoading(true)
+    setError('')
     try {
       const flow = await api.createFlow({
         name: name.trim(),
         description: description.trim() || undefined,
         tags: tags.split(',').map((t) => t.trim()).filter(Boolean),
-      });
-      setName(''); setDescription(''); setTags('');
-      onCreate(flow.id);
+      })
+      setName(''); setDescription(''); setTags('')
+      onCreate(flow.id)
     } catch (e) {
-      setError((e as Error).message);
+      setError((e as Error).message)
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
   const inputStyle: React.CSSProperties = {
     width: '100%', padding: '8px 12px',
     background: 'var(--color-bg-primary)', border: '1px solid var(--color-border)',
     borderRadius: '6px', color: 'var(--color-text)', fontSize: '14px', outline: 'none',
-  };
+  }
 
   const labelStyle: React.CSSProperties = {
     display: 'block', fontSize: '12px', fontWeight: 600,
     color: 'var(--color-text-muted)', textTransform: 'uppercase',
     letterSpacing: '0.06em', marginBottom: '6px',
-  };
+  }
 
   return (
     <Modal open={open} onClose={onClose} title="New Flow">
@@ -55,7 +55,7 @@ export function CreateFlowModal({ open, onClose, onCreate }: Props) {
             style={inputStyle}
             value={name}
             onChange={(e) => setName(e.target.value)}
-            onKeyDown={(e) => { if (e.key === 'Enter') handleCreate(); }}
+            onKeyDown={(e) => { if (e.key === 'Enter') handleCreate() }}
             placeholder="Legacy Order Processing"
             autoFocus
           />
@@ -87,5 +87,5 @@ export function CreateFlowModal({ open, onClose, onCreate }: Props) {
         </button>
       </div>
     </Modal>
-  );
+  )
 }

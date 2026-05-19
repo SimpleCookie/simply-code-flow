@@ -1,7 +1,9 @@
 {
   "compilerOptions": {
     "target": "es2022",
-    "lib": ["es2022"],
+    "lib": [
+      "es2022"
+    ],
     "module": "esnext",
     "moduleResolution": "bundler",
     "strict": true,
@@ -10,8 +12,13 @@
     "resolveJsonModule": true,
     "noEmit": true,
     "paths": {
-      "@scf/shared": ["../shared/src/index.ts"]
+      "@scf/shared": [
+        "../shared/src/index.ts"
+      ]
     }
   },
-  "include": ["src", "../shared/src"]
+  "include": [
+    "src",
+    "../shared/src"
+  ]
 }

@@ -10,7 +10,7 @@ export type NodeKind =
   | 'job'
   | 'config'
   | 'stub'
-  | 'unknown';
+  | 'unknown'
 
 export type EdgeKind =
   | 'calls'
@@ -23,69 +23,69 @@ export type EdgeKind =
   | 'renders'
   | 'inherits'
   | 'branches'
-  | 'unknown';
+  | 'unknown'
 
-export type NodeStatus = 'confirmed' | 'suspected' | 'todo';
-export type EdgeConfidence = 'confirmed' | 'suspected';
+export type NodeStatus = 'confirmed' | 'suspected' | 'todo'
+export type EdgeConfidence = 'confirmed' | 'suspected'
 
 export interface FlowNode {
-  id: string;
-  label: string;
-  kind: NodeKind;
-  language?: string;
-  code: string;
-  filePath?: string;
-  lineRange?: [number, number];
-  notes?: string;
-  tags: string[];
-  status: NodeStatus;
-  isAsync?: boolean;
-  position: { x: number; y: number };
-  contentHash?: string;
+  id: string
+  label: string
+  kind: NodeKind
+  language?: string
+  code: string
+  filePath?: string
+  lineRange?: [number, number]
+  notes?: string
+  tags: string[]
+  status: NodeStatus
+  isAsync?: boolean
+  position: { x: number; y: number }
+  contentHash?: string
 }
 
 export interface FlowEdge {
-  id: string;
-  source: string;
-  target: string;
-  kind: EdgeKind;
-  label?: string;
-  condition?: string;
-  confidence: EdgeConfidence;
-  notes?: string;
+  id: string
+  source: string
+  target: string
+  kind: EdgeKind
+  label?: string
+  condition?: string
+  confidence: EdgeConfidence
+  notes?: string
 }
 
 export interface Flow {
-  id: string;
-  name: string;
-  description?: string;
-  tags: string[];
-  nodes: FlowNode[];
-  edges: FlowEdge[];
-  version: number;
-  createdAt: string;
-  updatedAt: string;
+  id: string
+  name: string
+  description?: string
+  tags: string[]
+  nodes: FlowNode[]
+  edges: FlowEdge[]
+  version: number
+  createdAt: string
+  updatedAt: string
 }
 
 export interface FlowSummary {
-  id: string;
-  name: string;
-  description?: string;
-  tags: string[];
-  nodeCount: number;
-  updatedAt: string;
-  createdAt: string;
+  id: string
+  name: string
+  description?: string
+  tags: string[]
+  nodeCount: number
+  updatedAt: string
+  createdAt: string
 }
 
 export const NODE_KINDS: NodeKind[] = [
   'function', 'method', 'class', 'endpoint', 'sql',
   'event', 'external-api', 'ui', 'job', 'config', 'stub', 'unknown',
-];
+]
 
 export const EDGE_KINDS: EdgeKind[] = [
   'calls', 'async-calls', 'emits', 'listens', 'reads',
   'writes', 'http', 'renders', 'inherits', 'branches', 'unknown',
-];
+]
 
 export const KIND_COLORS: Record<NodeKind, string> = {
   function: '#6366f1',
@@ -100,7 +100,7 @@ export const KIND_COLORS: Record<NodeKind, string> = {
   config: '#94a3b8',
   stub: '#475569',
   unknown: '#475569',
-};
+}
 
 export const EDGE_KIND_COLORS: Record<EdgeKind, string> = {
   calls: '#6366f1',
@@ -114,4 +114,4 @@ export const EDGE_KIND_COLORS: Record<EdgeKind, string> = {
   inherits: '#94a3b8',
   branches: '#22c55e',
   unknown: '#475569',
-};
+}

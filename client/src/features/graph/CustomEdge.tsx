@@ -1,14 +1,14 @@
-import { memo } from 'react';
-import { BaseEdge, EdgeLabelRenderer, getBezierPath, type EdgeProps } from '@xyflow/react';
-import { EDGE_KIND_COLORS } from '@scf/shared';
-import type { EdgeKind } from '@scf/shared';
+import { memo } from 'react'
+import { BaseEdge, EdgeLabelRenderer, getBezierPath, type EdgeProps } from '@xyflow/react'
+import { EDGE_KIND_COLORS } from '@scf/shared'
+import type { EdgeKind } from '@scf/shared'
 
 export interface CustomEdgeData extends Record<string, unknown> {
-  kind: EdgeKind;
-  label?: string;
-  condition?: string;
-  confidence: 'confirmed' | 'suspected';
-  notes?: string;
+  kind: EdgeKind
+  label?: string
+  condition?: string
+  confidence: 'confirmed' | 'suspected'
+  notes?: string
 }
 
 export const CustomEdge = memo(function CustomEdge({
@@ -23,14 +23,14 @@ export const CustomEdge = memo(function CustomEdge({
   selected,
   markerEnd,
 }: EdgeProps) {
-  const d = (data ?? {}) as CustomEdgeData;
-  const color = EDGE_KIND_COLORS[d.kind ?? 'unknown'] ?? '#475569';
-  const displayLabel = d.condition ?? d.label ?? d.kind ?? 'unknown';
+  const d = (data ?? {}) as CustomEdgeData
+  const color = EDGE_KIND_COLORS[d.kind ?? 'unknown'] ?? '#475569'
+  const displayLabel = d.condition ?? d.label ?? d.kind ?? 'unknown'
 
   const [edgePath, labelX, labelY] = getBezierPath({
     sourceX, sourceY, sourcePosition,
     targetX, targetY, targetPosition,
-  });
+  })
 
   return (
     <>
@@ -72,5 +72,5 @@ export const CustomEdge = memo(function CustomEdge({
         </EdgeLabelRenderer>
       )}
     </>
-  );
-});
+  )
+})

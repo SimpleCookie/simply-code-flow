@@ -1,50 +1,50 @@
-import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Plus, GitBranch, Trash2, Clock, Circle } from 'lucide-react';
-import type { FlowSummary } from '@scf/shared';
-import { api } from '../../lib/api.ts';
-import { CreateFlowModal } from './CreateFlowModal.tsx';
+import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { Plus, GitBranch, Trash2, Clock, Circle } from 'lucide-react'
+import type { FlowSummary } from '@scf/shared'
+import { api } from '../../lib/api.ts'
+import { CreateFlowModal } from './CreateFlowModal.tsx'
 
 function formatDate(iso: string) {
-  const d = new Date(iso);
-  return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+  const d = new Date(iso)
+  return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
 export function FlowsPage() {
-  const navigate = useNavigate();
-  const [flows, setFlows] = useState<FlowSummary[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [createOpen, setCreateOpen] = useState(false);
-  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const navigate = useNavigate()
+  const [flows, setFlows] = useState<FlowSummary[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+  const [createOpen, setCreateOpen] = useState(false)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
 
   const loadFlows = async () => {
-    setLoading(true);
-    setError('');
+    setLoading(true)
+    setError('')
     try {
-      setFlows(await api.listFlows());
+      setFlows(await api.listFlows())
     } catch (e) {
-      setError((e as Error).message);
+      setError((e as Error).message)
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
-  useEffect(() => { void loadFlows(); }, []);
+  useEffect(() => { void loadFlows() }, [])
 
   const handleDelete = async (id: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (!confirm('Delete this flow? This cannot be undone.')) return;
-    setDeletingId(id);
+    e.stopPropagation()
+    if (!confirm('Delete this flow? This cannot be undone.')) return
+    setDeletingId(id)
     try {
-      await api.deleteFlow(id);
-      setFlows((prev) => prev.filter((f) => f.id !== id));
+      await api.deleteFlow(id)
+      setFlows((prev) => prev.filter((f) => f.id !== id))
     } catch (err) {
-      alert((err as Error).message);
+      alert((err as Error).message)
     } finally {
-      setDeletingId(null);
+      setDeletingId(null)
     }
-  };
+  }
 
   return (
     <div style={{ minHeight: '100%', background: 'var(--color-bg-primary)', display: 'flex', flexDirection: 'column' }}>
@@ -104,11 +104,11 @@ export function FlowsPage() {
               }}
               onMouseEnter={(e) => {
                 (e.currentTarget as HTMLDivElement).style.borderColor = 'var(--color-accent)';
-                (e.currentTarget as HTMLDivElement).style.boxShadow = '0 0 0 1px var(--color-accent)22';
+                (e.currentTarget as HTMLDivElement).style.boxShadow = '0 0 0 1px var(--color-accent)22'
               }}
               onMouseLeave={(e) => {
                 (e.currentTarget as HTMLDivElement).style.borderColor = 'var(--color-border)';
-                (e.currentTarget as HTMLDivElement).style.boxShadow = 'none';
+                (e.currentTarget as HTMLDivElement).style.boxShadow = 'none'
               }}
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
@@ -152,8 +152,8 @@ export function FlowsPage() {
       <CreateFlowModal
         open={createOpen}
         onClose={() => setCreateOpen(false)}
-        onCreate={(id) => { setCreateOpen(false); navigate(`/flows/${id}`); }}
+        onCreate={(id) => { setCreateOpen(false); navigate(`/flows/${id}`) }}
       />
     </div>
-  );
+  )
 }
