@@ -60,7 +60,7 @@ function guessKind(code: string): NodeKind {
     /\bapp\.(get|post|put|delete|patch)\s*\(/.test(code) ||
     /\brouter\.(get|post|put|delete|patch)\s*\(/.test(code)) return 'endpoint'
   if (/\b(emit|dispatch|publish|trigger|broadcast)\s*\(/.test(code)) return 'event'
-  if (/\b(useState|useEffect|render\s*\(|<[A-Z][A-Za-z]+)/.test(code)) return 'ui'
+  if (/\b(useState|useEffect|render\s*\(|<[A-Z][A-Za-z]+)/.test(code) || /@Composable\b/.test(code)) return 'ui'
   return 'function'
 }
 
@@ -201,6 +201,98 @@ function extractJvmStyle(code: string): ExtractedFunction[] {
   return results
 }
 
+/**
+ * Extract Kotlin function declarations.
+ * Handles: plain `fun`, modifiers (`override`, `suspend`, `private`, …),
+ * generic type params (`fun <T> name`), multi-line param lists,
+ * return-type annotations (`: Type`), block bodies `{ }` and
+ * expression bodies `= expr`.
+ */
+function extractKotlin(code: string): ExtractedFunction[] {
+  const results: ExtractedFunction[] = []
+
+  // Match [optional modifiers] fun [optional <TypeParams>] name(
+  const funRe =
+    /(?:(?:public|private|protected|internal|open|override|abstract|final|suspend|inline|infix|operator|tailrec|external|expect|actual|data|value|companion)\s+)*fun\s+(?:<[^>]*>\s*)?([A-Za-z_][A-Za-z0-9_]*)\s*\(/gm
+
+  const seen = new Set<number>()
+  let m: RegExpExecArray | null
+
+  while ((m = funRe.exec(code)) !== null) {
+    const label = m[1]
+    // m[0] ends with '(' — that paren is the start of the parameter list
+    const parenOpenIdx = m.index + m[0].length - 1
+
+    // Find close paren (handles nested parens in default values)
+    const parenCloseIdx = findClosingBrace(code, parenOpenIdx, '(', ')')
+
+    // Scan past optional `: ReturnType`
+    let pos = parenCloseIdx + 1
+    while (pos < code.length && /[ \t]/.test(code[pos])) pos++ // inline whitespace
+
+    if (code[pos] === ':') {
+      pos++ // skip ':'
+      while (pos < code.length && /[ \t]/.test(code[pos])) pos++ // whitespace after colon
+      // Scan the type — track angle/paren/bracket depth so we don't mistake
+      // a generic `>` or a lambda `)` for the end of the type
+      let depth = 0
+      while (pos < code.length) {
+        const ch = code[pos]
+        if (ch === '<' || ch === '(' || ch === '[') depth++
+        else if (ch === '>' || ch === ')' || ch === ']') depth--
+        else if (depth === 0 && (ch === '{' || ch === '=')) break
+        else if (depth === 0 && ch === '\n') break
+        pos++
+      }
+      // skip any trailing whitespace / newlines before { or =
+      while (pos < code.length && /\s/.test(code[pos])) pos++
+    }
+
+    if (pos >= code.length) continue
+
+    if (code[pos] === '{') {
+      // Block body
+      if (seen.has(pos)) continue
+      seen.add(pos)
+      const closeIdx = findClosingBrace(code, pos)
+      const body = code.slice(m.index, closeIdx + 1)
+      results.push({
+        label,
+        kind: guessKind(body),
+        code: body,
+        lineRange: [lineOf(code, m.index), lineOf(code, closeIdx)],
+        isAsync: /\bsuspend\b/.test(m[0]),
+        isExported: /\bpublic\b/.test(m[0]),
+        callees: extractCallees(body),
+      })
+    } else if (code[pos] === '=') {
+      // Expression body — capture until the next function declaration
+      pos++ // skip '='
+      while (pos < code.length && /[ \t]/.test(code[pos])) pos++ // skip inline whitespace
+      const rest = code.slice(pos)
+      // Stop at the next line that starts a new function (with or without modifiers)
+      const nextFunIdx = rest.search(
+        /\n(?=\s*(?:(?:public|private|protected|internal|open|override|abstract|final|suspend|inline|infix|operator|tailrec|external|expect|actual|data|value|companion)\s+)*fun\s)/
+      )
+      const bodyEnd = pos + (nextFunIdx === -1 ? rest.length : nextFunIdx)
+      const body = code.slice(m.index, bodyEnd).trimEnd()
+      results.push({
+        label,
+        kind: guessKind(body),
+        code: body,
+        lineRange: [lineOf(code, m.index), lineOf(code, m.index + body.length)],
+        isAsync: /\bsuspend\b/.test(m[0]),
+        isExported: /\bpublic\b/.test(m[0]),
+        callees: extractCallees(body),
+      })
+    }
+    // abstract / interface functions with no body → skip
+  }
+
+  results.sort((a, b) => a.lineRange[0] - b.lineRange[0])
+  return results
+}
+
 // ─── public API ──────────────────────────────────────────────────────────────
 
 export function extractFunctions(code: string, language: string): ExtractedFunction[] {
@@ -214,7 +306,9 @@ export function extractFunctions(code: string, language: string): ExtractedFunct
     results = extractJsTs(trimmed)
   } else if (lang === 'python') {
     results = extractPython(trimmed)
-  } else if (lang === 'java' || lang === 'csharp' || lang === 'kotlin' || lang === 'go' || lang === 'cpp' || lang === 'c') {
+  } else if (lang === 'kotlin') {
+    results = extractKotlin(trimmed)
+  } else if (lang === 'java' || lang === 'csharp' || lang === 'go' || lang === 'cpp' || lang === 'c') {
     results = extractJvmStyle(trimmed)
   }
 
