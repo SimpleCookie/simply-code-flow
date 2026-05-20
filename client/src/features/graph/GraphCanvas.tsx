@@ -5,6 +5,7 @@ import {
   BackgroundVariant,
   Controls,
   MiniMap,
+  SelectionMode,
   applyNodeChanges,
   applyEdgeChanges,
   type Connection,
@@ -106,6 +107,11 @@ export function GraphCanvas() {
     pushHistory()
   }, [pushHistory])
 
+  // Multi-node drag also needs a history entry
+  const onSelectionDragStart = useCallback(() => {
+    pushHistory()
+  }, [pushHistory])
+
   const onNodeClick = useCallback(
     (_: React.MouseEvent, node: { id: string }) => {
       selectNode(node.id)
@@ -145,6 +151,7 @@ export function GraphCanvas() {
         onReconnectStart={onReconnectStart}
         onReconnectEnd={onReconnectEnd}
         onNodeDragStart={onNodeDragStart}
+        onSelectionDragStart={onSelectionDragStart}
         onNodeClick={onNodeClick}
         onNodeDoubleClick={onNodeDoubleClick}
         onEdgeClick={onEdgeClick}
@@ -154,6 +161,9 @@ export function GraphCanvas() {
         defaultEdgeOptions={{ type: 'codeEdge', reconnectable: true }}
         deleteKeyCode="Delete"
         multiSelectionKeyCode="Shift"
+        selectionOnDrag
+        selectionMode={SelectionMode.Partial}
+        panOnDrag={[1, 2]}
         proOptions={{ hideAttribution: true }}
       >
         <Background variant={BackgroundVariant.Dots} gap={24} size={1} color="var(--color-border)" />

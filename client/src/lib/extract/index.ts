@@ -52,25 +52,55 @@ const BUILTIN_NAMES = new Set([
   'log', 'warn', 'error', 'info', 'debug', 'assert', 'self',
 ])
 
+/** Receivers stripped to bare method name: `this.foo()` → `foo` */
+const STRIP_RECEIVERS = new Set(['this', 'self', 'super'])
+
+/** Receivers whose calls are skipped entirely (standard library / runtime globals) */
+const SKIP_RECEIVERS = new Set([
+  'console', 'Object', 'Array', 'String', 'Number', 'Boolean',
+  'JSON', 'Math', 'Date', 'Promise', 'Error', 'Map', 'Set',
+  'System', 'List', 'HashMap', 'ArrayList', 'StringBuilder',
+  'process', 'window', 'document', 'global', 'globalThis', 'module', 'exports',
+])
+
+/**
+ * Resolve the callee name for a match with optional `receiver` and `method`.
+ * Returns null to skip this call site entirely.
+ * - `receiver.method` for qualified calls (e.g. `fooService.create`)
+ * - bare `method` for `this.foo()`, `self.bar()`, and unqualified calls
+ * - null for builtin receivers/methods, keywords, or very short names
+ */
+function resolveCalleeName(receiver: string | undefined, method: string): string | null {
+  if (BUILTIN_NAMES.has(method) || method.length <= 2) return null
+  if (!receiver) return method
+  if (SKIP_RECEIVERS.has(receiver)) return null
+  if (STRIP_RECEIVERS.has(receiver)) return method
+  return `${receiver}.${method}`
+}
+
+// Shared pattern: optional `receiver.` then `method(`
+const CALLEE_PATTERN = /(?:([A-Za-z_$][A-Za-z0-9_$]*)\.)?([A-Za-z_$][A-Za-z0-9_$]*)\s*\(/
+
 function extractCallees(body: string): string[] {
-  const re = /\b([A-Za-z_$][A-Za-z0-9_$]*)\s*\(/g
+  const re = new RegExp(CALLEE_PATTERN.source, 'g')
   const found = new Set<string>()
   let m: RegExpExecArray | null
   while ((m = re.exec(body)) !== null) {
-    if (!BUILTIN_NAMES.has(m[1]) && m[1].length > 2) found.add(m[1])
+    const name = resolveCalleeName(m[1], m[2])
+    if (name) found.add(name)
   }
   return Array.from(found).slice(0, 25)
 }
 
 /** Returns ordered list of unique callee names in first-call order. */
 function extractOrderedCallees(body: string): OrderedCallee[] {
-  const re = /\b([A-Za-z_$][A-Za-z0-9_$]*)\s*\(/g
+  const re = new RegExp(CALLEE_PATTERN.source, 'g')
   const seen = new Map<string, OrderedCallee>()
   let order = 1
   let m: RegExpExecArray | null
   while ((m = re.exec(body)) !== null) {
-    const name = m[1]
-    if (!BUILTIN_NAMES.has(name) && name.length > 2 && !seen.has(name)) {
+    const name = resolveCalleeName(m[1], m[2])
+    if (name && !seen.has(name)) {
       seen.set(name, { name, order: order++, line: lineOf(body, m.index) })
     }
   }
@@ -84,7 +114,15 @@ function guessKind(code: string): NodeKind {
     /\bapp\.(get|post|put|delete|patch)\s*\(/.test(code) ||
     /\brouter\.(get|post|put|delete|patch)\s*\(/.test(code)) return 'endpoint'
   if (/\b(emit|dispatch|publish|trigger|broadcast)\s*\(/.test(code)) return 'event'
-  if (/\b(useState|useEffect|render\s*\(|<[A-Z][A-Za-z]+)/.test(code) || /@Composable\b/.test(code)) return 'ui'
+  // UI: require strong evidence. Avoid false positives from:
+  //   - bare render() calls (template engines, server-side rendering)
+  //   - generic type syntax like Map<String, List<Foo>> (Kotlin/Java)
+  if (
+    /\b(useState|useEffect|useMemo|useRef|useCallback|useContext)\s*\(/.test(code) ||
+    /<[A-Z][A-Za-z]*[\s/>]/.test(code) ||   // JSX: uppercase tag with space, / or >
+    /\bdefineComponent\s*\(/.test(code) ||   // Vue
+    /@(Component|Composable)\b/.test(code)   // Angular / Jetpack Compose
+  ) return 'ui'
   return 'function'
 }
 
