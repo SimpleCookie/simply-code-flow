@@ -57,6 +57,10 @@ export interface FlowEdge {
   notes?: string
   sourceHandle?: string
   targetHandle?: string
+  /** 1-based order of this call within the source function body (extraction-only; undefined for manual edges) */
+  callOrder?: number
+  /** Line within the source function body where the call appears */
+  callLine?: number
 }
 
 export interface Flow {

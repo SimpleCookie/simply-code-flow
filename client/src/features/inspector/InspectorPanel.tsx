@@ -412,6 +412,17 @@ export function InspectorPanel() {
             <label style={labelStyle}>Notes</label>
             <textarea style={{ ...inputStyle, height: '80px', resize: 'vertical', fontFamily: 'inherit' }} value={edgeData.notes ?? ''} onChange={(e) => updateEdge(edge.id, { notes: e.target.value || undefined })} placeholder="Add notes…" />
           </div>
+          {edgeData.callOrder != null && (
+            <div style={sectionStyle}>
+              <label style={labelStyle}>Call Order</label>
+              <span style={{ fontSize: '12px', color: 'var(--color-text)', fontFamily: 'ui-monospace, monospace' }}>
+                Call #{edgeData.callOrder}
+                {edgeData.callLine != null && (
+                  <span style={{ color: 'var(--color-text-muted)' }}> · line {edgeData.callLine} in source</span>
+                )}
+              </span>
+            </div>
+          )}
         </div>
       </div>
     )

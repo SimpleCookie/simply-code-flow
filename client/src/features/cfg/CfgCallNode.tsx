@@ -6,6 +6,7 @@ export interface CfgCallNodeData extends Record<string, unknown> {
   label: string
   callTarget?: string
   isAsync?: boolean
+  callOrder?: number
   onJumpTo?: (target: string) => void
 }
 
@@ -26,9 +27,22 @@ export const CfgCallNode = memo(function CfgCallNode({ data, selected }: NodePro
       boxShadow: selected ? `0 0 0 2px ${accent}44` : '0 2px 8px rgba(0,0,0,0.3)',
       fontFamily: 'ui-monospace, monospace',
       cursor: d.callTarget ? 'pointer' : 'default',
+      position: 'relative',
     }}
       onClick={() => d.callTarget && d.onJumpTo?.(d.callTarget)}
     >
+      {d.callOrder != null && (
+        <div style={{
+          position: 'absolute', top: -7, right: -7,
+          width: 15, height: 15, borderRadius: '50%',
+          background: '#0f172a', border: '1px solid #475569',
+          color: '#94a3b8', display: 'flex', alignItems: 'center',
+          justifyContent: 'center', fontSize: '8px', fontWeight: 700,
+          pointerEvents: 'none',
+        }}>
+          {d.callOrder}
+        </div>
+      )}
       {d.isAsync && <Zap size={11} color="#f59e0b" style={{ flexShrink: 0 }} />}
       <span style={{ fontSize: '12px', color: accent, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
         {d.label}

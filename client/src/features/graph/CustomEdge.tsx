@@ -9,6 +9,8 @@ export interface CustomEdgeData extends Record<string, unknown> {
   condition?: string
   confidence: 'confirmed' | 'suspected'
   notes?: string
+  callOrder?: number
+  callLine?: number
 }
 
 export const CustomEdge = memo(function CustomEdge({
@@ -40,6 +42,10 @@ export const CustomEdge = memo(function CustomEdge({
     sourceX, sourceY, sourcePosition,
     targetX, targetY, targetPosition,
   })
+
+  // Place order badge ~15% along the edge (30% toward midpoint from source)
+  const badgeX = sourceX + (labelX - sourceX) * 0.3
+  const badgeY = sourceY + (labelY - sourceY) * 0.3
 
   return (
     <>
@@ -77,6 +83,32 @@ export const CustomEdge = memo(function CustomEdge({
             className="nodrag nopan"
           >
             {displayLabel}
+          </div>
+        </EdgeLabelRenderer>
+      )}
+      {d.callOrder != null && (
+        <EdgeLabelRenderer>
+          <div
+            style={{
+              position: 'absolute',
+              transform: `translate(-50%, -50%) translate(${badgeX}px,${badgeY}px)`,
+              pointerEvents: 'none',
+              width: 17,
+              height: 17,
+              borderRadius: '50%',
+              background: '#0f172a',
+              border: '1px solid #475569',
+              color: '#94a3b8',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '9px',
+              fontFamily: 'ui-monospace, monospace',
+              fontWeight: 700,
+            }}
+            title={`Call #${d.callOrder}${d.callLine != null ? ` · line ${d.callLine}` : ''}`}
+          >
+            {d.callOrder}
           </div>
         </EdgeLabelRenderer>
       )}

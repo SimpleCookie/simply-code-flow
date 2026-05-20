@@ -1,5 +1,13 @@
 import type { NodeKind } from '@scf/shared'
 
+export interface OrderedCallee {
+  name: string
+  /** 1-based position among unique callees in this function body */
+  order: number
+  /** Line within the function body (1-based) where the first call occurs */
+  line: number
+}
+
 export interface ExtractedFunction {
   label: string
   kind: NodeKind
@@ -9,6 +17,7 @@ export interface ExtractedFunction {
   isExported: boolean
   containerClass?: string
   callees: string[]
+  orderedCallees: OrderedCallee[]
 }
 
 // ─── helpers ────────────────────────────────────────────────────────────────
@@ -51,6 +60,21 @@ function extractCallees(body: string): string[] {
     if (!BUILTIN_NAMES.has(m[1]) && m[1].length > 2) found.add(m[1])
   }
   return Array.from(found).slice(0, 25)
+}
+
+/** Returns ordered list of unique callee names in first-call order. */
+function extractOrderedCallees(body: string): OrderedCallee[] {
+  const re = /\b([A-Za-z_$][A-Za-z0-9_$]*)\s*\(/g
+  const seen = new Map<string, OrderedCallee>()
+  let order = 1
+  let m: RegExpExecArray | null
+  while ((m = re.exec(body)) !== null) {
+    const name = m[1]
+    if (!BUILTIN_NAMES.has(name) && name.length > 2 && !seen.has(name)) {
+      seen.set(name, { name, order: order++, line: lineOf(body, m.index) })
+    }
+  }
+  return Array.from(seen.values()).slice(0, 25)
 }
 
 function guessKind(code: string): NodeKind {
@@ -110,6 +134,7 @@ function extractJsTs(code: string): ExtractedFunction[] {
         isAsync,
         isExported,
         callees: extractCallees(body),
+        orderedCallees: extractOrderedCallees(body),
       })
     }
   }
@@ -148,6 +173,7 @@ function extractPython(code: string): ExtractedFunction[] {
         isAsync,
         isExported: false,
         callees: extractCallees(body),
+        orderedCallees: extractOrderedCallees(body),
       })
       i = j
     } else {
@@ -193,6 +219,7 @@ function extractJvmStyle(code: string): ExtractedFunction[] {
         isAsync: /\basync\b/.test(m[0]),
         isExported: /\bpublic\b/.test(m[0]),
         callees: extractCallees(body),
+        orderedCallees: extractOrderedCallees(body),
       })
     }
   }
@@ -264,6 +291,7 @@ function extractKotlin(code: string): ExtractedFunction[] {
         isAsync: /\bsuspend\b/.test(m[0]),
         isExported: /\bpublic\b/.test(m[0]),
         callees: extractCallees(body),
+        orderedCallees: extractOrderedCallees(body),
       })
     } else if (code[pos] === '=') {
       // Expression body — capture until the next function declaration
@@ -284,6 +312,7 @@ function extractKotlin(code: string): ExtractedFunction[] {
         isAsync: /\bsuspend\b/.test(m[0]),
         isExported: /\bpublic\b/.test(m[0]),
         callees: extractCallees(body),
+        orderedCallees: extractOrderedCallees(body),
       })
     }
     // abstract / interface functions with no body → skip
@@ -322,25 +351,26 @@ export function extractFunctions(code: string, language: string): ExtractedFunct
       isAsync: /\basync\b|\bawait\b/.test(trimmed),
       isExported: false,
       callees: extractCallees(trimmed),
+      orderedCallees: extractOrderedCallees(trimmed),
     }]
   }
 
   return results
 }
 
-/** Deduplicate internal call edges between extracted functions */
-export function buildInternalEdges(functions: ExtractedFunction[]): Array<{ source: string; target: string }> {
+/** Deduplicate internal call edges between extracted functions, preserving call order. */
+export function buildInternalEdges(functions: ExtractedFunction[]): Array<{ source: string; target: string; callOrder: number; callLine: number }> {
   const nameToIndex = new Map(functions.map((f, i) => [f.label, i]))
-  const edges: Array<{ source: string; target: string }> = []
+  const edges: Array<{ source: string; target: string; callOrder: number; callLine: number }> = []
   const seen = new Set<string>()
 
   for (const fn of functions) {
-    for (const callee of fn.callees) {
-      if (nameToIndex.has(callee) && callee !== fn.label) {
-        const key = `${fn.label}→${callee}`
+    for (const callee of fn.orderedCallees) {
+      if (nameToIndex.has(callee.name) && callee.name !== fn.label) {
+        const key = `${fn.label}→${callee.name}`
         if (!seen.has(key)) {
           seen.add(key)
-          edges.push({ source: fn.label, target: callee })
+          edges.push({ source: fn.label, target: callee.name, callOrder: callee.order, callLine: callee.line })
         }
       }
     }

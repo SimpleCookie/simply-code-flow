@@ -45,7 +45,7 @@ function cfgKindToRfType(kind: CfgNode['kind']): string {
   return 'cfg-block'
 }
 
-function toRfNode(n: CfgNode & { position: { x: number; y: number }; width: number; height: number }, onJumpTo?: (c: string) => void): Node {
+function toRfNode(n: CfgNode & { position: { x: number; y: number }; width: number; height: number }, onJumpTo?: (c: string) => void, callOrder?: number): Node {
   return {
     id: n.id,
     type: cfgKindToRfType(n.kind),
@@ -56,6 +56,7 @@ function toRfNode(n: CfgNode & { position: { x: number; y: number }; width: numb
       isAsync: n.isAsync,
       isReturn: n.isReturn,
       callTarget: n.callTarget,
+      callOrder,
       onJumpTo,
     },
     style: { width: n.width },
@@ -100,8 +101,12 @@ export function CfgCanvas({ code, language: _language, nodeLabel, onJumpTo }: Cf
       const hasStructure = graph.nodes.some((n) => n.kind !== 'entry' && n.kind !== 'exit')
       if (!hasStructure) return { nodes: [], edges: [], complexity: 1, isEmpty: true }
       const { nodes: laid, edges } = layoutCfg(graph)
+      let callCount = 0
       return {
-        nodes: laid.map((n) => toRfNode(n, onJumpTo)),
+        nodes: laid.map((n) => {
+          const callOrder = n.kind === 'call' ? ++callCount : undefined
+          return toRfNode(n, onJumpTo, callOrder)
+        }),
         edges: edges.map(toRfEdge),
         complexity: graph.cyclomaticComplexity,
         isEmpty: false,

@@ -176,7 +176,7 @@ export function SnippetModal() {
     const labelToId = new Map(includedRows.map((r) => [r.label, r.tempId]))
     const internalEdges: FlowEdge[] = buildInternalEdges(includedRows.map((r) => ({ ...r.fn, label: r.label })))
       .filter((e) => labelToId.has(e.source) && labelToId.has(e.target))
-      .map((e) => ({ id: nanoid(), source: labelToId.get(e.source)!, target: labelToId.get(e.target)!, kind: 'calls', confidence: 'suspected' }))
+      .map((e) => ({ id: nanoid(), source: labelToId.get(e.source)!, target: labelToId.get(e.target)!, kind: 'calls', confidence: 'suspected', callOrder: e.callOrder, callLine: e.callLine } as FlowEdge))
 
     commitMultiSnippet(flowNodes, internalEdges, parentId ?? null)
     setLastLanguage(language)

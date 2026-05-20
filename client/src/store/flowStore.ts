@@ -87,6 +87,8 @@ function toRfEdge(e: FlowEdge): Edge {
       condition: e.condition,
       confidence: e.confidence,
       notes: e.notes,
+      callOrder: e.callOrder,
+      callLine: e.callLine,
     },
   }
 }
@@ -123,6 +125,8 @@ function fromRfEdge(e: Edge): FlowEdge {
     notes: d.notes as string | undefined,
     sourceHandle: e.sourceHandle ?? undefined,
     targetHandle: e.targetHandle ?? undefined,
+    callOrder: d.callOrder as number | undefined,
+    callLine: d.callLine as number | undefined,
   }
 }
 
